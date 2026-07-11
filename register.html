@@ -53,6 +53,21 @@
     <footer class="app-footer">등록 신청은 GitHub 이슈로 접수되어 관리자 승인 후 명단에 반영됩니다</footer>
   </div>
 
+<script>
+(function(){
+  var root = document.documentElement;
+  var raf = null, lastX = window.innerWidth*0.6, lastY = window.innerHeight*0.1;
+  function apply(){
+    root.style.setProperty('--mx', (lastX / window.innerWidth * 100).toFixed(2) + '%');
+    root.style.setProperty('--my', (lastY / window.innerHeight * 100).toFixed(2) + '%');
+    raf = null;
+  }
+  window.addEventListener('pointermove', function(e){
+    lastX = e.clientX; lastY = e.clientY;
+    if(!raf) raf = requestAnimationFrame(apply);
+  }, { passive:true });
+})();
+</script>
 <script src="register.js"></script>
 </body>
 </html>

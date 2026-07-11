@@ -36,8 +36,10 @@
         <div class="temp-add-wrap">
           <div class="temp-add-row">
             <button type="button" class="mini-btn" id="btnToggleTempAdd">+ 임시 참가자 추가 (이번만 사용)</button>
-            <a href="register.html" class="mini-btn" style="text-decoration:none;">참가자 등록 신청</a>
-            <a href="admin.html" class="mini-btn" style="text-decoration:none;">참가자 관리 (관리자용)</a>
+            <div class="temp-add-links">
+              <a href="register.html" class="mini-btn" style="text-decoration:none;">참가자 등록 신청</a>
+              <a href="admin.html" class="mini-btn" style="text-decoration:none;">참가자 관리 (관리자용)</a>
+            </div>
           </div>
           <div id="tempAddPanel" class="temp-add-panel hidden">
             <p class="hint-text" style="margin-bottom:10px;">
@@ -187,6 +189,21 @@
     </div>
   </div>
 
+<script>
+(function(){
+  var root = document.documentElement;
+  var raf = null, lastX = window.innerWidth*0.6, lastY = window.innerHeight*0.1;
+  function apply(){
+    root.style.setProperty('--mx', (lastX / window.innerWidth * 100).toFixed(2) + '%');
+    root.style.setProperty('--my', (lastY / window.innerHeight * 100).toFixed(2) + '%');
+    raf = null;
+  }
+  window.addEventListener('pointermove', function(e){
+    lastX = e.clientX; lastY = e.clientY;
+    if(!raf) raf = requestAnimationFrame(apply);
+  }, { passive:true });
+})();
+</script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="app.js"></script>
 </body>
