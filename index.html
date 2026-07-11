@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>내전 팀 나누기</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <div class="app">
+
+    <header class="app-header">
+      <div class="logo-mark">⟡</div>
+      <h1>내전 팀 나누기</h1>
+      <div class="step-track" id="stepTrack">
+        <span class="step active" data-step="1">01 선택</span>
+        <span class="step" data-step="2">02 팀배정</span>
+        <span class="step" data-step="3">03 결과</span>
+      </div>
+      <a href="admin.html" class="mini-btn" style="text-decoration:none;">참가자 관리</a>
+    </header>
+
+    <main id="app-main">
+
+      <!-- SCREEN 1: PLAYER SELECT -->
+      <section id="screen-1" class="screen">
+        <div class="screen-intro">
+          <h2>참가자 10명을 선택하세요</h2>
+          <p id="selectCount" class="counter">0 / 10 선택됨</p>
+        </div>
+        <div id="playerGrid" class="player-grid">
+          <!-- filled by JS -->
+        </div>
+        <div class="nav-row">
+          <button class="btn btn-ghost" id="btn1-back" disabled>이전</button>
+          <button class="btn btn-primary" id="btn1-next" disabled>다음</button>
+        </div>
+      </section>
+
+      <!-- SCREEN 2: TEAM ASSIGN -->
+      <section id="screen-2" class="screen hidden">
+        <div class="screen-intro">
+          <h2>1팀 / 2팀으로 나누세요</h2>
+          <p class="counter"><span id="teamCounter">1팀 0명 · 2팀 0명</span> (각 5명 필요)</p>
+        </div>
+
+        <div class="team-columns">
+          <div class="team-col">
+            <div class="team-title team-1">1 TEAM</div>
+            <div id="team1List" class="team-list"></div>
+          </div>
+          <div class="team-col">
+            <div class="team-title team-2">2 TEAM</div>
+            <div id="team2List" class="team-list"></div>
+          </div>
+        </div>
+
+        <div class="unassigned-wrap">
+          <div class="unassigned-label">미배정</div>
+          <div id="unassignedList" class="unassigned-list"></div>
+        </div>
+
+        <div class="nav-row">
+          <button class="btn btn-ghost" id="btn2-back">이전</button>
+          <button class="btn btn-primary" id="btn2-next" disabled>다음</button>
+        </div>
+      </section>
+
+      <!-- SCREEN 3: RESULT -->
+      <section id="screen-3" class="screen hidden">
+        <div class="screen-intro">
+          <h2>선공 / 선수비 배정</h2>
+          <p class="counter">버튼을 눌러 무작위로 배정하세요</p>
+        </div>
+
+        <div class="result-columns" id="resultColumns">
+          <div class="result-col">
+            <div class="team-title team-1">1 TEAM</div>
+            <div class="side-badge" id="side1">-</div>
+            <div id="resultTeam1" class="team-list"></div>
+          </div>
+          <div class="result-col">
+            <div class="team-title team-2">2 TEAM</div>
+            <div class="side-badge" id="side2">-</div>
+            <div id="resultTeam2" class="team-list"></div>
+          </div>
+        </div>
+
+        <div class="nav-row">
+          <button class="btn btn-ghost" id="btn3-back">이전</button>
+          <button class="btn btn-primary" id="btn3-roll">랜덤 배정</button>
+        </div>
+      </section>
+
+      <div id="loadError" class="load-error hidden"></div>
+
+    </main>
+
+    <footer class="app-footer">data/players.json 데이터를 기반으로 생성됨 · <a href="admin.html">참가자 관리에서 편집</a></footer>
+  </div>
+
+<script src="app.js"></script>
+</body>
+</html>

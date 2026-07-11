@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>참가자 관리 · 내전 팀 나누기</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <div class="app">
+
+    <header class="app-header">
+      <div class="logo-mark">⟡</div>
+      <h1>참가자 관리</h1>
+      <a href="index.html" class="btn btn-ghost" style="text-decoration:none; padding:9px 18px; font-size:13px;">← 팀 나누기로</a>
+    </header>
+
+    <main id="admin-main">
+
+      <!-- SETUP PANEL (first time / reconfigure) -->
+      <section id="setupPanel" class="hidden">
+        <div class="screen-intro">
+          <h2>GitHub 저장소 연결</h2>
+          <p class="counter">이 브라우저에 한 번만 연결 정보를 저장하면, 이후엔 편집 후 저장만 누르면 됩니다.</p>
+        </div>
+
+        <div class="admin-form">
+          <label>
+            <span>owner (사용자명 또는 조직명)</span>
+            <input type="text" id="cfgOwner" placeholder="예: myGithubId" />
+          </label>
+          <label>
+            <span>repo (저장소 이름)</span>
+            <input type="text" id="cfgRepo" placeholder="예: team-splitter-site" />
+          </label>
+          <label>
+            <span>branch</span>
+            <input type="text" id="cfgBranch" placeholder="main" value="main" />
+          </label>
+          <label>
+            <span>파일 경로</span>
+            <input type="text" id="cfgPath" placeholder="data/players.json" value="data/players.json" />
+          </label>
+          <label>
+            <span>Personal Access Token</span>
+            <input type="password" id="cfgToken" placeholder="ghp_... 또는 github_pat_..." />
+          </label>
+          <p class="hint-text">
+            토큰은 <strong>이 브라우저에만</strong> 저장되며 코드나 저장소에 올라가지 않습니다.
+            GitHub → Settings → Developer settings → Fine-grained tokens 에서
+            해당 저장소에 대해 <b>Contents: Read and write</b> 권한으로 발급하세요.
+          </p>
+          <button class="btn btn-primary" id="btnSaveConfig">연결하고 불러오기</button>
+        </div>
+      </section>
+
+      <!-- EDITOR PANEL -->
+      <section id="editorPanel" class="hidden">
+        <div class="screen-intro" style="display:flex; justify-content:space-between; align-items:flex-end; gap:12px; flex-wrap:wrap;">
+          <div>
+            <h2>참가자 목록 편집</h2>
+            <p class="counter" id="editorStatus">불러오는 중...</p>
+          </div>
+          <button class="mini-btn" id="btnReconfigure">저장소 설정 변경</button>
+        </div>
+
+        <div class="admin-table-wrap">
+          <div class="admin-table-head">
+            <span>닉네임#태그</span>
+            <span>실명</span>
+            <span>최고티어</span>
+            <span></span>
+          </div>
+          <div id="playerRows"></div>
+        </div>
+
+        <div class="nav-row" style="margin-top:16px;">
+          <button class="btn btn-ghost" id="btnAddRow">+ 참가자 추가</button>
+          <button class="btn btn-primary" id="btnSave">GitHub에 저장</button>
+        </div>
+
+        <div id="saveMsg" class="load-error hidden"></div>
+      </section>
+
+      <div id="adminError" class="load-error hidden"></div>
+
+    </main>
+
+    <footer class="app-footer">변경사항은 GitHub 저장소의 data/players.json에 즉시 커밋됩니다</footer>
+  </div>
+
+<script src="github-api.js"></script>
+<script src="admin.js"></script>
+</body>
+</html>
