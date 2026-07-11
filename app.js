@@ -42,7 +42,15 @@ function getTierBadgeHtml(tier) {
   const rank = parts[0];
   const num = parts[1] || '';
   
-  const abbr = rank === 'Radiant' ? 'R' : rank.charAt(0) + num;
+  let abbr = '';
+  if (rank === 'Radiant') {
+    abbr = 'R';
+  } else if (rank === 'Immortal') {
+    abbr = 'IM' + num;
+  } else {
+    abbr = rank.charAt(0) + num;
+  }
+  
   const c = TIER_COLORS[rank] || { bg:'#E7E7EA', text:'#6B6D76' };
   
   return `<span class="tier-badge" style="background:${c.bg}; color:${c.text};">${abbr}</span>`;
@@ -55,7 +63,6 @@ function getPlayerByTag(tag) {
 /* ---------------- LOAD DATA ---------------- */
 async function loadPlayers(){
   try{
-    // cache-busting query so freshly-saved edits show up without hard refresh
     const res = await fetch(`data/players.json?t=${Date.now()}`);
     if(!res.ok) throw new Error('data/players.json을 찾을 수 없습니다.');
     const raw = await res.json();
@@ -84,6 +91,75 @@ async function loadPlayers(){
 /* ---------------- SCREEN 1 : SELECT ---------------- */
 function renderPlayerGrid(){
   const grid = $('#playerGrid');
+
+  if(!$('#searchContainer')){
+    const searchWrap = document.createElement('div');
+    searchWrap.id = 'searchContainer';
+    searchWrap.className = 'search-container';
+    searchWrap.innerHTML = `
+      <input type="text" id="playerSearch" placeholder="닉네임 또는 실명 검색..." autocomplete="off" />
+      <div id="searchDropdown" class="search-dropdown hidden"></div>
+    `;
+    grid.parentNode.insertBefore(searchWrap, grid);
+
+    const searchInput = $('#playerSearch');
+    const searchDropdown = $('#searchDropdown');
+
+    searchInput.addEventListener('input', (e) => {
+      const query = e.target.value.trim().toLowerCase().replace(/\s+/g, '');
+      if(!query){
+        searchDropdown.classList.add('hidden');
+        return;
+      }
+
+      const matches = state.players.filter(p => {
+        const tagNoSpace = String(p.tag).toLowerCase().replace(/\s+/g, '');
+        const nameNoSpace = String(p.name || '').toLowerCase().replace(/\s+/g, '');
+        
+        const matchTag = tagNoSpace.includes(query);
+        const matchNameExact = nameNoSpace === query;
+        const matchNamePartial = query.length >= 2 && nameNoSpace.includes(query);
+
+        return matchTag || matchNameExact || matchNamePartial;
+      });
+
+      if(matches.length === 0){
+        searchDropdown.innerHTML = '<div class="dropdown-empty">검색 결과가 없습니다.</div>';
+        searchDropdown.classList.remove('hidden');
+        return;
+      }
+
+      searchDropdown.innerHTML = matches.map(p => {
+        const isSelected = state.selected.includes(p.tag);
+        return `<div class="dropdown-item ${isSelected ? 'selected' : ''}" data-tag="${escapeHtml(p.tag)}">
+          <span class="dropdown-tag">${escapeHtml(p.tag)}</span>
+          ${p.name ? `<span class="dropdown-name">${escapeHtml(p.name)}</span>` : ''}
+          ${getTierBadgeHtml(p.tier)}
+          ${isSelected ? '<span class="dropdown-check">[선택됨]</span>' : ''}
+        </div>`;
+      }).join('');
+
+      searchDropdown.classList.remove('hidden');
+
+      $$('.dropdown-item').forEach(item => {
+        item.addEventListener('click', () => {
+          const tag = item.dataset.tag;
+          toggleSelect(tag);
+          
+          searchInput.value = '';
+          searchDropdown.classList.add('hidden');
+          searchInput.focus();
+        });
+      });
+    });
+
+    document.addEventListener('click', (e) => {
+      if(!searchWrap.contains(e.target)){
+        searchDropdown.classList.add('hidden');
+      }
+    });
+  }
+
   grid.innerHTML = '';
   state.players.forEach(p=>{
     const card = document.createElement('div');
@@ -149,7 +225,7 @@ function renderTeamScreen(){
     if(teamNum === 1 || teamNum === 2){
       const chip = document.createElement('div');
       chip.className = 'tag-chip';
-      chip.innerHTML = `<span>${escapeHtml(tag)} ${getTierBadgeHtml(player.tier)}</span><button aria-label="제거">✕</button>`;
+      chip.innerHTML = `<span>${escapeHtml(tag)} ${getTierBadgeHtml(player.tier)}</span><button aria-label="제거">X</button>`;
       chip.querySelector('button').addEventListener('click', ()=>{
         state.teamOf[tag] = null;
         renderTeamScreen();
