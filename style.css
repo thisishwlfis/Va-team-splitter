@@ -485,29 +485,34 @@ main{flex:1;}
   opacity:1;
   transform:translateY(0);
 }
-.tier-group{
-  display:flex;
-  flex-direction:column;
-  align-items:stretch;
-  gap:5px;
+.tier-group {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
 }
-.tier-group-radiant{
-  border-top:1px solid var(--line);
-  padding-top:8px;
-  margin-top:2px;
+.tier-group-radiant {
+  border-top: 1px solid var(--line);
+  padding-top: 8px;
+  margin-top: 2px;
+  display: block;
 }
-.tier-chip{
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  width:100%;
-  font-family:var(--font-display);
-  font-size:11.5px;
-  font-weight:700;
-  padding:6px 10px;
-  border-radius:999px;
-  letter-spacing:0.02em;
-  box-shadow:inset 0 1px 0 rgba(255,255,255,0.35), 0 1px 2px rgba(20,20,25,0.08);
+.tier-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 85px;
+  flex-shrink: 0;
+  font-family: var(--font-display);
+  font-size: 11.5px;
+  font-weight: 700;
+  padding: 6px 10px;
+  border-radius: 999px;
+  letter-spacing: 0.02em;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.35), 0 1px 2px rgba(20,20,25,0.08);
+}
+.tier-group-radiant .tier-chip {
+  width: 100%;
 }
 .tier-chip-btn{
   border:none;
@@ -516,9 +521,10 @@ main{flex:1;}
 }
 .tier-chip-btn:hover{filter:brightness(1.06);}
 .tier-chip-btn.active{box-shadow:inset 0 1px 0 rgba(255,255,255,0.35), 0 0 0 2px var(--ink);}
-.tier-nums{
-  display:flex;
-  gap:4px;
+.tier-nums {
+  display: flex;
+  gap: 4px;
+  flex: 1;
 }
 .tier-num-btn{
   flex:1;
@@ -545,4 +551,6 @@ main{flex:1;}
   .tier-trigger{grid-column:span 2;}
   .tier-panel{grid-column:span 2;}
   .row-delete{grid-column:span 2; justify-self:end; width:auto; padding:6px 12px;}
+}
+
 }
