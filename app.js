@@ -24,7 +24,7 @@ const MAP_IMAGE_SLUGS = {
   '서밋': 'summit'
 };
 const MAP_IMAGE_DIR = 'assets/maps';
-const MAP_IMAGE_EXT = 'jpg';
+const MAP_IMAGE_EXT = 'webp';
 
 function buildMapCardBackground(mapName){
   const slug = MAP_IMAGE_SLUGS[mapName];
