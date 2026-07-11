@@ -271,7 +271,10 @@ main{flex:1;}
   display: flex;
   justify-content: center;
   align-items: center;
-  gap: 6px;
+  gap: 3px;
+}
+.team-avg .tier-badge {
+  margin-left: 0;
 }
 
 .tag-chip{

@@ -328,13 +328,13 @@ function initTeamColumnsUI() {
     const avg1 = document.createElement('div');
     avg1.className = 'team-avg';
     avg1.id = 't1AvgBox';
-    avg1.textContent = '평균: -';
+    avg1.textContent = '평균 : -';
     col1.appendChild(avg1);
     
     const avg2 = document.createElement('div');
     avg2.className = 'team-avg';
     avg2.id = 't2AvgBox';
-    avg2.textContent = '평균: -';
+    avg2.textContent = '평균 : -';
     col2.appendChild(avg2);
   }
 }
@@ -353,8 +353,8 @@ function updateAveragesUI() {
   const t1TierName = getTierFromScore(t1Avg);
   const t2TierName = getTierFromScore(t2Avg);
   
-  $('#t1AvgBox').innerHTML = t1TierName ? `평균: <span>${t1TierName}</span> ${getTierBadgeHtml(t1TierName)}` : '평균: -';
-  $('#t2AvgBox').innerHTML = t2TierName ? `평균: <span>${t2TierName}</span> ${getTierBadgeHtml(t2TierName)}` : '평균: -';
+  $('#t1AvgBox').innerHTML = t1TierName ? `평균 : <span>${t1TierName}</span> ${getTierBadgeHtml(t1TierName)}` : '평균 : -';
+  $('#t2AvgBox').innerHTML = t2TierName ? `평균 : <span>${t2TierName}</span> ${getTierBadgeHtml(t2TierName)}` : '평균 : -';
   
   const advBox = $('#advantageBox');
   if (t1Sum > 0 || t2Sum > 0) {
