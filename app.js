@@ -5,6 +5,44 @@
 
 const MAPS = ['스플릿', '바인드', '헤이븐', '어센트', '아이스박스', '브리즈', '프랙처', '펄', '로터스', '선셋', '어비스', '코로드', '서밋'];
 
+/* 맵 사진 파일명 매핑. assets/maps/ 폴더에 아래 파일명으로 사진을 넣으면 자동 적용됩니다.
+   (예: assets/maps/split.jpg, assets/maps/bind.jpg ...) 사진이 없으면 기존 색상
+   그라데이션으로 자연스럽게 대체됩니다. */
+const MAP_IMAGE_SLUGS = {
+  '스플릿': 'split',
+  '바인드': 'bind',
+  '헤이븐': 'haven',
+  '어센트': 'ascent',
+  '아이스박스': 'icebox',
+  '브리즈': 'breeze',
+  '프랙처': 'fracture',
+  '펄': 'pearl',
+  '로터스': 'lotus',
+  '선셋': 'sunset',
+  '어비스': 'abyss',
+  '코로드': 'corrode',
+  '서밋': 'summit'
+};
+const MAP_IMAGE_DIR = 'assets/maps';
+const MAP_IMAGE_EXT = 'jpg';
+
+function buildMapCardBackground(mapName){
+  const slug = MAP_IMAGE_SLUGS[mapName];
+  const photoLayer = slug ? `url('${MAP_IMAGE_DIR}/${slug}.${MAP_IMAGE_EXT}')` : 'none';
+  const fallbackGradient = getMapGradient(mapName);
+  // 오른쪽에서 왼쪽으로 상자 폭의 약 45%를 채우는 그라데이션(진함 -> 투명) +
+  // 전체적으로 은은한 어둡기(가독성용) + 사진 + 사진 없을 때 대비용 색상 그라데이션
+  return [
+    `background-image:` +
+      `linear-gradient(to left, rgba(8,9,12,0.95) 0%, rgba(8,9,12,0.95) 10%, rgba(8,9,12,0.5) 45%, rgba(8,9,12,0.18) 100%),` +
+      `${photoLayer},` +
+      `${fallbackGradient}`,
+    `background-size: cover, cover, cover`,
+    `background-position: center, center, center`,
+    `background-repeat: no-repeat, no-repeat, no-repeat`
+  ].join(';') + ';';
+}
+
 const state = {
   players: [],        // {tag, name, tier}
   selected: [],        // array of tag strings (max 10)
@@ -658,6 +696,7 @@ function runMapRouletteAnimation(finalAssignments){
       nameEl.textContent = item.map;
       row.classList.remove('spinning');
       row.classList.add('revealed');
+      row.style.cssText += buildMapCardBackground(item.map);
       const badge = row.querySelector('.map-result-badge');
       badge.textContent = MAP_SOURCE_LABEL[item.source];
       badge.className = `map-result-badge map-result-badge-${item.source}`;
@@ -689,6 +728,7 @@ function renderMapResults(targetSel){
   state.mapAssignments.forEach(item => {
     const row = document.createElement('div');
     row.className = 'map-result-item revealed';
+    row.style.cssText = buildMapCardBackground(item.map);
     row.innerHTML = `
       <span class="map-result-game">${item.game}세트</span>
       <span class="map-result-name">${escapeHtml(item.map)}</span>

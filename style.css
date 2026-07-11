@@ -183,6 +183,9 @@ main{flex:1;}
 .nav-row-left{
   justify-content:flex-start;
 }
+.nav-row-right{
+  justify-content:flex-end;
+}
 .btn{
   font-family:var(--font-body);
   font-size:14px;
@@ -532,7 +535,13 @@ main{flex:1;}
 }
 .map-result-item.revealed{
   animation:mapRevealPop .32s cubic-bezier(.34,1.56,.64,1);
+  border:none;
+  color:#fff;
+  min-height:56px;
 }
+.map-result-item.revealed .map-result-game{color:rgba(255,255,255,0.78);}
+.map-result-item.revealed .map-result-name{color:#fff; text-shadow:0 1px 3px rgba(0,0,0,0.35);}
+.map-result-item.revealed .map-side-pill:not(.attack):not(.defense){background:rgba(255,255,255,0.16); color:#fff;}
 @keyframes mapRevealPop{
   0%{transform:scale(0.9); opacity:0.3;}
   60%{transform:scale(1.03); opacity:1;}
