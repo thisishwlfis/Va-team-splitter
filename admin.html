@@ -122,21 +122,6 @@
     <footer class="app-footer">변경사항은 GitHub 저장소의 data/players.json에 즉시 커밋됩니다</footer>
   </div>
 
-<script>
-(function(){
-  var root = document.documentElement;
-  var raf = null, lastX = window.innerWidth*0.6, lastY = window.innerHeight*0.1;
-  function apply(){
-    root.style.setProperty('--mx', (lastX / window.innerWidth * 100).toFixed(2) + '%');
-    root.style.setProperty('--my', (lastY / window.innerHeight * 100).toFixed(2) + '%');
-    raf = null;
-  }
-  window.addEventListener('pointermove', function(e){
-    lastX = e.clientX; lastY = e.clientY;
-    if(!raf) raf = requestAnimationFrame(apply);
-  }, { passive:true });
-})();
-</script>
 <script src="github-api.js"></script>
 <script src="admin.js"></script>
 </body>

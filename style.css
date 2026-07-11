@@ -10,12 +10,10 @@
   --radius: 14px;
   --font-display: 'Space Grotesk', 'Pretendard', -apple-system, sans-serif;
   --font-body: 'Inter', 'Pretendard', -apple-system, sans-serif;
-  --mx: 60%;
-  --my: 10%;
   --glass-bg: rgba(255,255,255,0.5);
   --glass-bg-strong: rgba(255,255,255,0.68);
   --glass-border: rgba(255,255,255,0.65);
-  --glass-shadow: 0 8px 28px rgba(15,16,20,0.09), inset 0 1px 0 rgba(255,255,255,0.65), inset 0 -1px 0 rgba(15,16,20,0.03);
+  --glass-shadow: 0 2px 10px rgba(15,16,20,0.05);
   --glass-blur: blur(20px) saturate(180%);
 }
 
@@ -36,13 +34,12 @@ html,body{
 }
 body{
   background:
-    radial-gradient(760px circle at var(--mx) var(--my), rgba(225,29,46,0.16), transparent 58%),
-    radial-gradient(680px circle at 12% 85%, rgba(99,158,255,0.14), transparent 55%),
-    radial-gradient(600px circle at 92% 92%, rgba(255,214,92,0.12), transparent 55%),
+    radial-gradient(760px circle at 78% 6%, rgba(225,29,46,0.10), transparent 58%),
+    radial-gradient(680px circle at 10% 85%, rgba(99,158,255,0.10), transparent 55%),
+    radial-gradient(600px circle at 95% 92%, rgba(255,214,92,0.08), transparent 55%),
     linear-gradient(180deg, #F3F4F8 0%, #EAEBF1 100%);
   background-attachment:fixed;
   min-height:100vh;
-  transition:background .05s linear;
 }
 
 .app{
@@ -1349,11 +1346,11 @@ main{flex:1;}
   -webkit-backdrop-filter:blur(30px) saturate(180%);
   border:1px solid rgba(255,255,255,0.55);
   border-radius:22px;
-  max-width:1080px;
-  width:96%;
+  max-width:1320px;
+  width:96vw;
   max-height:88vh;
   overflow-y:auto;
-  padding:28px 30px 24px;
+  padding:28px 32px 24px;
   box-shadow:0 24px 70px rgba(15,16,20,0.28), inset 0 1px 0 rgba(255,255,255,0.6);
   animation:balanceRiseIn .22s cubic-bezier(.2,.8,.2,1);
 }
@@ -1396,8 +1393,8 @@ main{flex:1;}
 }
 .balance-options{
   display:grid;
-  grid-template-columns:repeat(3, minmax(260px, 1fr));
-  gap:16px;
+  grid-template-columns:repeat(3, minmax(0, 1fr));
+  gap:18px;
 }
 @media (max-width:900px){
   .balance-options{grid-template-columns:1fr;}
@@ -1473,10 +1470,9 @@ main{flex:1;}
   text-align:center;
 }
 .balance-option-player .bp-name{
-  overflow-wrap:anywhere;
-  word-break:break-word;
-  white-space:normal;
-  line-height:1.35;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
 }
 .balance-option-player.is-captain .bp-name{font-weight:700;}
 .balance-option-player .bp-tier{display:flex; align-items:center; flex-shrink:0;}
@@ -1489,8 +1485,9 @@ main{flex:1;}
 }
 
 /* ============================================================
-   GLASSMORPHISM (Liquid Glass) — 전체 표면 오버라이드
-   iOS 26 스타일: 반투명 유리 표면 + 커서를 따라다니는 빛 반사
+   GLASSMORPHISM (Flat Liquid Glass)
+   - 커다란 커서추적 원형 하이라이트 제거, 플랫한 유리 표면
+   - 버튼은 hover 시에만 미세한 광택이 대각선으로 스치는 인터랙션
    ============================================================ */
 
 .app-header{
@@ -1509,12 +1506,10 @@ main{flex:1;}
   backdrop-filter:blur(10px) saturate(160%);
   -webkit-backdrop-filter:blur(10px) saturate(160%);
   border:1px solid rgba(255,255,255,0.55);
-  box-shadow:inset 0 1px 0 rgba(255,255,255,0.5);
 }
 .step.active{
-  background:linear-gradient(135deg, #FF4757, var(--red) 60%, var(--red-dark));
-  border-color:rgba(255,255,255,0.35);
-  box-shadow:0 4px 14px rgba(225,29,46,0.35), inset 0 1px 0 rgba(255,255,255,0.5);
+  background:var(--red);
+  border-color:var(--red);
 }
 
 .player-card{
@@ -1522,31 +1517,29 @@ main{flex:1;}
   backdrop-filter:blur(16px) saturate(170%);
   -webkit-backdrop-filter:blur(16px) saturate(170%);
   border:1px solid var(--glass-border);
-  box-shadow:0 4px 16px rgba(15,16,20,0.06), inset 0 1px 0 rgba(255,255,255,0.55);
+  box-shadow:var(--glass-shadow);
 }
 .player-card:hover{
   background:rgba(255,255,255,0.62);
-  box-shadow:0 8px 22px rgba(15,16,20,0.09), inset 0 1px 0 rgba(255,255,255,0.6);
 }
 .player-card.checked{
-  background:rgba(225,29,46,0.14);
+  background:rgba(225,29,46,0.13);
   border-color:rgba(225,29,46,0.45);
-  box-shadow:0 6px 18px rgba(225,29,46,0.16), inset 0 1px 0 rgba(255,255,255,0.4);
 }
 
+/* ---- 플랫 버튼 (튀어나와 보이는 입체감 제거) ---- */
 .btn-primary{
-  background:linear-gradient(155deg, #FF4E5E 0%, var(--red) 55%, var(--red-dark) 100%);
-  border:1px solid rgba(255,255,255,0.3);
-  box-shadow:0 8px 22px rgba(225,29,46,0.32), inset 0 1px 0 rgba(255,255,255,0.5);
+  background:var(--red);
+  border:1px solid var(--red);
+  box-shadow:none;
 }
 .btn-primary:hover:not(:disabled){
-  background:linear-gradient(155deg, #FF5C6B 0%, #D91C2C 55%, var(--red-dark) 100%);
-  box-shadow:0 10px 26px rgba(225,29,46,0.4), inset 0 1px 0 rgba(255,255,255,0.55);
+  background:var(--red-dark);
 }
 .btn-primary:disabled{
-  background:rgba(240,183,188,0.7);
+  background:#F0B7BC;
+  border-color:#F0B7BC;
   box-shadow:none;
-  border-color:rgba(255,255,255,0.2);
 }
 
 .btn-ghost,
@@ -1554,15 +1547,14 @@ main{flex:1;}
   background:rgba(255,255,255,0.42);
   backdrop-filter:blur(14px) saturate(170%);
   -webkit-backdrop-filter:blur(14px) saturate(170%);
-  border:1.5px solid rgba(255,255,255,0.55);
-  box-shadow:inset 0 1px 0 rgba(255,255,255,0.55), 0 2px 8px rgba(15,16,20,0.04);
+  border:1.5px solid rgba(255,255,255,0.6);
+  box-shadow:none;
 }
 .btn-ghost:hover:not(:disabled),
 .mini-btn:hover{
   background:rgba(255,255,255,0.65);
   border-color:var(--red);
   color:var(--red);
-  box-shadow:inset 0 1px 0 rgba(255,255,255,0.7), 0 6px 16px rgba(225,29,46,0.12);
 }
 
 .team-col{
@@ -1586,7 +1578,7 @@ main{flex:1;}
   backdrop-filter:blur(14px) saturate(170%);
   -webkit-backdrop-filter:blur(14px) saturate(170%);
   border:1px solid var(--glass-border);
-  box-shadow:0 4px 14px rgba(15,16,20,0.05), inset 0 1px 0 rgba(255,255,255,0.5);
+  box-shadow:none;
 }
 
 .admin-table-wrap,
@@ -1612,99 +1604,115 @@ main{flex:1;}
 }
 
 .search-dropdown{
-  background:rgba(255,255,255,0.72);
+  background:rgba(255,255,255,0.8);
   backdrop-filter:blur(24px) saturate(180%);
   -webkit-backdrop-filter:blur(24px) saturate(180%);
   border:1px solid var(--glass-border);
-  box-shadow:0 14px 34px rgba(15,16,20,0.14);
+  box-shadow:0 10px 28px rgba(15,16,20,0.12);
 }
 
 .tier-panel-inner{
-  background:rgba(255,255,255,0.55);
+  background:rgba(255,255,255,0.6);
   backdrop-filter:blur(18px) saturate(170%);
   -webkit-backdrop-filter:blur(18px) saturate(170%);
   border:1px solid var(--glass-border);
 }
 
 .app-footer{
-  background:rgba(255,255,255,0.32);
+  background:rgba(255,255,255,0.28);
   backdrop-filter:blur(10px);
   -webkit-backdrop-filter:blur(10px);
   border-radius:14px;
   padding:10px 14px;
 }
 
+/* ---- 게임설정 화면: 바깥 상자 테두리 제거, 내부 카드만 유리 표면 ---- */
 .map-picker-wrap,
-.map-result-wrap,
-.bo-select .bo-btn{
+.map-result-wrap{
+  background:transparent;
+  border:none;
+  box-shadow:none;
+}
+.map-picker-col{
   background:rgba(255,255,255,0.4);
   backdrop-filter:blur(16px) saturate(170%);
   -webkit-backdrop-filter:blur(16px) saturate(170%);
   border:1px solid var(--glass-border);
+  box-shadow:var(--glass-shadow);
+}
+.map-chip{
+  background:rgba(255,255,255,0.55);
+  border:1.5px solid var(--glass-border);
+}
+.map-chip.active{
+  background:var(--red);
+  border-color:var(--red);
 }
 
-/* 커서를 따라 흐르는 유리 반사광 — 각 유리 표면 위에 얹히는 하이라이트 */
-.app-header,
-.player-card,
+/* ---- 맵/세트 결과 리스트: 흰 박스 테두리 제거, 유리 표면으로 통일 ---- */
+.map-result-item{
+  background:rgba(255,255,255,0.45);
+  backdrop-filter:blur(14px) saturate(170%);
+  -webkit-backdrop-filter:blur(14px) saturate(170%);
+  border:1px solid var(--glass-border);
+}
+.map-result-item.spinning{
+  background:rgba(255,255,255,0.55);
+}
+.map-result-item.revealed{
+  border:none;
+}
+
+.side-result-item{
+  background:rgba(255,255,255,0.5);
+  backdrop-filter:blur(12px) saturate(160%);
+  -webkit-backdrop-filter:blur(12px) saturate(160%);
+}
+.side-result-item.attack,
+.side-result-item.defense{
+  backdrop-filter:none;
+  -webkit-backdrop-filter:none;
+}
+
+/* ---- 결과 화면: 흰 배경/테두리 제거, 유리 표면으로 ---- */
+.result-col{
+  background:rgba(255,255,255,0.42);
+  backdrop-filter:blur(18px) saturate(170%);
+  -webkit-backdrop-filter:blur(18px) saturate(170%);
+  border:1px solid var(--glass-border);
+  box-shadow:var(--glass-shadow);
+}
+.side-badge{
+  background:rgba(255,255,255,0.5);
+}
+.final-result-capture{
+  background:transparent;
+  padding:0;
+}
+
+/* ---- 버튼 호버 시 스치는 미세 광택 (마우스 위치가 아닌, 상호작용에 반응) ---- */
 .btn-primary,
 .btn-ghost,
-.mini-btn,
-.team-col,
-.tag-chip,
-.unassigned-chip,
-.admin-table-wrap,
-.pending-card,
-.temp-add-panel,
-.balance-overlay-inner,
-.balance-option{
+.mini-btn{
   position:relative;
-  isolation:isolate;
+  overflow:hidden;
 }
-.app-header::before,
-.player-card::before,
-.btn-primary::before,
-.btn-ghost::before,
-.mini-btn::before,
-.team-col::before,
-.tag-chip::before,
-.unassigned-chip::before,
-.admin-table-wrap::before,
-.pending-card::before,
-.temp-add-panel::before,
-.balance-overlay-inner::before,
-.balance-option::before{
+.btn-primary::after,
+.btn-ghost::after,
+.mini-btn::after{
   content:"";
   position:absolute;
-  inset:0;
-  border-radius:inherit;
-  background:radial-gradient(420px circle at var(--mx) var(--my), rgba(255,255,255,0.55), transparent 60%);
-  background-attachment:fixed;
-  mix-blend-mode:overlay;
-  opacity:0.55;
+  top:0;
+  left:-60%;
+  width:40%;
+  height:100%;
+  background:linear-gradient(115deg, transparent, rgba(255,255,255,0.55), transparent);
+  transform:skewX(-18deg);
   pointer-events:none;
-  z-index:-1;
+  transition:left .5s ease;
 }
-.btn-primary::before{
-  background:radial-gradient(420px circle at var(--mx) var(--my), rgba(255,255,255,0.75), transparent 60%);
-  background-attachment:fixed;
-  mix-blend-mode:soft-light;
-  opacity:0.7;
-}
-
-@media (max-width:640px){
-  .app-header,
-  .player-card,
-  .btn-primary,
-  .btn-ghost,
-  .mini-btn,
-  .team-col,
-  .tag-chip,
-  .unassigned-chip,
-  .admin-table-wrap,
-  .pending-card,
-  .temp-add-panel,
-  .balance-overlay-inner,
-  .balance-option{
-    isolation:auto;
-  }
+.btn-primary:hover::after,
+.btn-ghost:hover::after,
+.mini-btn:hover::after{
+  left:130%;
 }
