@@ -19,8 +19,6 @@
         <span class="step" data-step="3">03 게임설정</span>
         <span class="step" data-step="4">04 결과</span>
       </div>
-      <a href="register.html" class="mini-btn" style="text-decoration:none;">참가자 등록 신청</a>
-      <a href="admin.html" class="mini-btn" style="text-decoration:none;">참가자 관리</a>
     </header>
 
     <main id="app-main">
@@ -36,7 +34,11 @@
         </div>
 
         <div class="temp-add-wrap">
-          <button type="button" class="mini-btn" id="btnToggleTempAdd">+ 임시 참가자 추가 (이번만 사용)</button>
+          <div class="temp-add-row">
+            <button type="button" class="mini-btn" id="btnToggleTempAdd">+ 임시 참가자 추가 (이번만 사용)</button>
+            <a href="register.html" class="mini-btn" style="text-decoration:none;">참가자 등록 신청</a>
+            <a href="admin.html" class="mini-btn" style="text-decoration:none;">참가자 관리 (관리자용)</a>
+          </div>
           <div id="tempAddPanel" class="temp-add-panel hidden">
             <p class="hint-text" style="margin-bottom:10px;">
               여기서 추가한 참가자는 <b>이번 팀 나누기에서만</b> 사용되고 저장되지 않습니다.
@@ -64,9 +66,12 @@
 
       <!-- SCREEN 2: TEAM ASSIGN -->
       <section id="screen-2" class="screen hidden">
-        <div class="screen-intro">
-          <h2>1팀 / 2팀으로 나누세요</h2>
-          <p class="counter"><span id="teamCounter">1팀 0명 · 2팀 0명</span> (각 5명 필요)</p>
+        <div class="screen-intro" style="display:flex; justify-content:space-between; align-items:flex-end; gap:12px; flex-wrap:wrap;">
+          <div>
+            <h2>1팀 / 2팀으로 나누세요</h2>
+            <p class="counter"><span id="teamCounter">1팀 0명 · 2팀 0명</span> (각 5명 필요)</p>
+          </div>
+          <button type="button" class="btn btn-ghost" id="btnAutoBalance">⚡ 팀 밸런스 자동 배정</button>
         </div>
 
         <div class="team-columns">
@@ -168,7 +173,18 @@
 
     </main>
 
-    <footer class="app-footer">data/players.json 데이터를 기반으로 생성됨 · <a href="admin.html">참가자 관리에서 편집</a></footer>
+    <footer class="app-footer">data/players.json 데이터를 기반으로 생성됨 · <a href="admin.html">참가자 관리 (관리자용)에서 편집</a></footer>
+
+    <div id="balanceOverlay" class="balance-overlay hidden">
+      <div class="balance-overlay-inner">
+        <div class="balance-overlay-head">
+          <h3>팀 밸런스 옵션을 선택하세요</h3>
+          <button type="button" class="balance-close" id="btnCloseBalance" aria-label="닫기">✕</button>
+        </div>
+        <p class="balance-overlay-sub">팀장 배정과 그룹 묶음은 유지한 채, 티어 차이가 가장 적은 조합 3가지를 계산했습니다. 옵션을 클릭하면 바로 적용됩니다.</p>
+        <div class="balance-options" id="balanceOptions"></div>
+      </div>
+    </div>
   </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>

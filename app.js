@@ -512,6 +512,175 @@ function countTeam(n){
   return state.selected.filter(tag => state.teamOf[tag] === n).length;
 }
 
+/* ---------------- TEAM AUTO-BALANCE ---------------- */
+function buildBalanceUnits(){
+  // 팀장은 이미 배정된 팀에 고정. 그룹은 팀장이 아닌 멤버들끼리 묶어서 하나의 단위로 취급.
+  const captainTeamOf = {};
+  state.captains.forEach(tag => { captainTeamOf[tag] = state.teamOf[tag] || null; });
+
+  const seenGroups = {};
+  const units = [];
+
+  state.selected.forEach(tag => {
+    if (state.captains.includes(tag)) return; // 팀장은 유닛에 포함하지 않음(고정)
+    const g = state.groupOf[tag];
+    if (g) {
+      if (seenGroups[g]) {
+        seenGroups[g].tags.push(tag);
+        seenGroups[g].score += getTierScoreExact(getPlayerByTag(tag).tier);
+      } else {
+        const unit = { tags: [tag], score: getTierScoreExact(getPlayerByTag(tag).tier) };
+        seenGroups[g] = unit;
+        units.push(unit);
+      }
+    } else {
+      units.push({ tags: [tag], score: getTierScoreExact(getPlayerByTag(tag).tier) });
+    }
+  });
+
+  return { units, captainTeamOf };
+}
+
+function computeBalanceOptions(){
+  const { units, captainTeamOf } = buildBalanceUnits();
+
+  let cap1Count = 0, cap1Score = 0, cap2Count = 0, cap2Score = 0;
+  Object.keys(captainTeamOf).forEach(tag => {
+    const t = captainTeamOf[tag];
+    const score = getTierScoreExact(getPlayerByTag(tag).tier);
+    if (t === 1) { cap1Count++; cap1Score += score; }
+    else if (t === 2) { cap2Count++; cap2Score += score; }
+  });
+
+  const team1NeedSlots = 5 - cap1Count;
+  const team2NeedSlots = 5 - cap2Count;
+
+  if (team1NeedSlots < 0 || team2NeedSlots < 0) return [];
+
+  const n = units.length;
+  const results = [];
+  const totalCombos = Math.pow(2, n);
+
+  // n이 매우 크면(그룹핑 없이 10명 모두 유닛일 때 최대 8~10) 2^n은 충분히 작아 완전탐색 가능
+  for (let mask = 0; mask < totalCombos; mask++){
+    let size1 = 0, score1 = 0;
+    const team1Tags = [];
+    const team2Tags = [];
+    for (let i = 0; i < n; i++){
+      const unit = units[i];
+      if (mask & (1 << i)){
+        size1 += unit.tags.length;
+        score1 += unit.score;
+        team1Tags.push(...unit.tags);
+      } else {
+        team2Tags.push(...unit.tags);
+      }
+    }
+    if (size1 !== team1NeedSlots) continue;
+
+    const finalT1Score = cap1Score + score1;
+    const totalScore = cap1Score + cap2Score + units.reduce((s,u)=>s+u.score,0);
+    const finalT2Score = totalScore - finalT1Score;
+
+    const avg1 = finalT1Score / 5;
+    const avg2 = finalT2Score / 5;
+    const diff = Math.abs(avg1 - avg2);
+
+    const capTeam1Tags = state.captains.filter(t => captainTeamOf[t] === 1);
+    const capTeam2Tags = state.captains.filter(t => captainTeamOf[t] === 2);
+
+    results.push({
+      diff,
+      team1Tags: [...capTeam1Tags, ...team1Tags],
+      team2Tags: [...capTeam2Tags, ...team2Tags],
+      avg1, avg2
+    });
+  }
+
+  results.sort((a,b) => a.diff - b.diff);
+
+  // 팀1/팀2 멤버 구성이 동일한(중복) 조합 제거 후 상위 3개 선택
+  const seen = new Set();
+  const distinct = [];
+  for (const r of results){
+    const key = [...r.team1Tags].sort().join(',');
+    if (seen.has(key)) continue;
+    seen.add(key);
+    distinct.push(r);
+    if (distinct.length >= 3) break;
+  }
+  return distinct;
+}
+
+function renderBalanceOption(option, idx){
+  const rankLabel = ['최적 조합', '2순위 조합', '3순위 조합'][idx] || `${idx+1}순위`;
+  const diffText = parseFloat(option.diff.toFixed(2));
+  const playerRow = (tag) => {
+    const p = getPlayerByTag(tag);
+    const isCap = state.captains.includes(tag);
+    return `<div class="balance-option-player">${isCap ? '👑' : ''}${escapeHtml(tag)} ${getTierBadgeHtml(p.tier)}</div>`;
+  };
+  return `
+    <button type="button" class="balance-option" data-idx="${idx}">
+      <span class="balance-option-rank">${rankLabel}</span>
+      <div class="balance-option-diff">티어 차이 <span>${diffText}</span></div>
+      <div class="balance-option-teams">
+        <div>
+          <div class="balance-option-team-title">TEAM 1</div>
+          ${option.team1Tags.map(playerRow).join('')}
+        </div>
+        <div>
+          <div class="balance-option-team-title">TEAM 2</div>
+          ${option.team2Tags.map(playerRow).join('')}
+        </div>
+      </div>
+    </button>
+  `;
+}
+
+let lastBalanceOptions = [];
+
+function openBalanceOverlay(){
+  const c1 = countTeam(1), c2 = countTeam(2);
+  const unassignedCount = state.selected.length - c1 - c2;
+  const options = computeBalanceOptions();
+  lastBalanceOptions = options;
+
+  const box = $('#balanceOptions');
+  if (options.length === 0){
+    box.innerHTML = `<div class="balance-empty">현재 팀장/그룹 설정으로는 5:5로 나눌 수 있는 조합을 찾지 못했습니다.<br>그룹 인원 구성을 확인해주세요.</div>`;
+  } else {
+    box.innerHTML = options.map((opt, idx) => renderBalanceOption(opt, idx)).join('');
+    box.querySelectorAll('.balance-option').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const idx = Number(btn.dataset.idx);
+        applyBalanceOption(lastBalanceOptions[idx]);
+        closeBalanceOverlay();
+      });
+    });
+  }
+  $('#balanceOverlay').classList.remove('hidden');
+}
+
+function closeBalanceOverlay(){
+  $('#balanceOverlay').classList.add('hidden');
+}
+
+function applyBalanceOption(option){
+  if (!option) return;
+  option.team1Tags.forEach(tag => { state.teamOf[tag] = 1; });
+  option.team2Tags.forEach(tag => { state.teamOf[tag] = 2; });
+  renderTeamScreen();
+}
+
+if ($('#btnAutoBalance')){
+  $('#btnAutoBalance').addEventListener('click', openBalanceOverlay);
+  $('#btnCloseBalance').addEventListener('click', closeBalanceOverlay);
+  $('#balanceOverlay').addEventListener('click', (e) => {
+    if (e.target.id === 'balanceOverlay') closeBalanceOverlay();
+  });
+}
+
 /* ---------------- SCREEN 3 : GAME SETUP ---------------- */
 const MAP_SOURCE_LABEL = { team1: 'TEAM 1', team2: 'TEAM 2', common: '공통' };
 
