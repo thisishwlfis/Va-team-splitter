@@ -6,15 +6,15 @@ const TIER_OPTIONS = TIER_RANKS.flatMap(rank => [1, 2, 3].map(n => `${rank} ${n}
 TIER_OPTIONS.push('Radiant');
 
 const TIER_COLORS = {
-  Iron:      { bg: '#4B4E55', text: '#FFFFFF' },
-  Bronze:    { bg: '#8A5A34', text: '#FFFFFF' },
-  Silver:    { bg: '#AEB2B8', text: '#1A1A1A' },
-  Gold:      { bg: '#E5B93C', text: '#1A1A1A' },
-  Platinum:  { bg: '#17A398', text: '#FFFFFF' },
-  Diamond:   { bg: '#9D6FFF', text: '#FFFFFF' },
-  Ascendant: { bg: '#1FAE5E', text: '#FFFFFF' },
-  Immortal:  { bg: '#8B1E4E', text: '#FFFFFF' },
-  Radiant:   { bg: 'linear-gradient(135deg,#FCE38A,#FFF7D6)', text: '#7A5C00' }
+  Iron:      { bg: 'linear-gradient(135deg,#5B5E66,#34363B)', text: '#FFFFFF' },
+  Bronze:    { bg: 'linear-gradient(135deg,#B27C4A,#7A4D26)', text: '#FFFFFF' },
+  Silver:    { bg: 'linear-gradient(135deg,#D7D9DD,#A6AAB1)', text: '#26272B' },
+  Gold:      { bg: 'linear-gradient(135deg,#F7D573,#DDAA2A)', text: '#3A2C00' },
+  Platinum:  { bg: 'linear-gradient(135deg,#33D0C3,#0E8377)', text: '#FFFFFF' },
+  Diamond:   { bg: 'linear-gradient(135deg,#C1A2FF,#7C4DFF)', text: '#FFFFFF' },
+  Ascendant: { bg: 'linear-gradient(135deg,#42DA84,#0F8C48)', text: '#FFFFFF' },
+  Immortal:  { bg: 'linear-gradient(135deg,#C13E7B,#6E1339)', text: '#FFFFFF' },
+  Radiant:   { bg: 'linear-gradient(135deg,#FFEBA8,#FFD65C)', text: '#5C4300' }
 };
 
 let currentSha = null;
