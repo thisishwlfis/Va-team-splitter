@@ -618,7 +618,7 @@ function renderBalanceOption(option, idx){
   const playerRow = (tag) => {
     const p = getPlayerByTag(tag);
     const isCap = state.captains.includes(tag);
-    return `<div class="balance-option-player">${isCap ? '👑' : ''}${escapeHtml(tag)} ${getTierBadgeHtml(p.tier)}</div>`;
+    return `<div class="balance-option-player${isCap ? ' is-captain' : ''}"><span class="bp-flag">${isCap ? 'C' : ''}</span><span class="bp-name">${escapeHtml(tag)}</span><span class="bp-tier">${getTierBadgeHtml(p.tier)}</span></div>`;
   };
   return `
     <button type="button" class="balance-option" data-idx="${idx}">
