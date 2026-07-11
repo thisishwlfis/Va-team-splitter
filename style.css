@@ -408,7 +408,8 @@ main{flex:1;}
   align-items:center;
 }
 .admin-row:last-child{border-bottom:none;}
-.admin-row input{
+.admin-row input,
+.admin-row select{
   width:100%;
   font-family:var(--font-body);
   font-size:13px;
@@ -420,10 +421,12 @@ main{flex:1;}
   outline:none;
   transition:border-color .15s, background .15s;
 }
-.admin-row input:focus{
+.admin-row input:focus,
+.admin-row select:focus{
   border-color:var(--red);
   background:#fff;
 }
+.admin-row select{cursor:pointer;}
 .row-delete{
   width:32px;
   height:32px;

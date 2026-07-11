@@ -1,6 +1,10 @@
 const $ = (sel) => document.querySelector(sel);
 const $$ = (sel) => Array.from(document.querySelectorAll(sel));
 
+const TIER_RANKS = ['Iron', 'Bronze', 'Silver', 'Gold', 'Platinum', 'Diamond', 'Ascendant', 'Immortal'];
+const TIER_OPTIONS = TIER_RANKS.flatMap(rank => [1, 2, 3].map(n => `${rank} ${n}`));
+TIER_OPTIONS.push('Radiant');
+
 let currentSha = null;
 let players = [];
 
@@ -75,10 +79,13 @@ function renderRows(){
   players.forEach((p, idx) => {
     const row = document.createElement('div');
     row.className = 'admin-row';
+
+    const tierOptionsHtml = buildTierOptionsHtml(p.tier);
+
     row.innerHTML = `
       <input type="text" data-field="tag" data-idx="${idx}" value="${escapeAttr(p.tag)}" placeholder="닉네임#태그" />
       <input type="text" data-field="name" data-idx="${idx}" value="${escapeAttr(p.name)}" placeholder="실명" />
-      <input type="text" data-field="tier" data-idx="${idx}" value="${escapeAttr(p.tier)}" placeholder="최고티어" />
+      <select data-field="tier" data-idx="${idx}">${tierOptionsHtml}</select>
       <button class="row-delete" data-idx="${idx}" aria-label="삭제">✕</button>
     `;
     wrap.appendChild(row);
@@ -91,6 +98,12 @@ function renderRows(){
       players[idx][field] = inp.value;
     });
   });
+  wrap.querySelectorAll('select[data-field="tier"]').forEach(sel => {
+    sel.addEventListener('change', () => {
+      const idx = Number(sel.dataset.idx);
+      players[idx].tier = sel.value;
+    });
+  });
   wrap.querySelectorAll('.row-delete').forEach(btn => {
     btn.addEventListener('click', () => {
       const idx = Number(btn.dataset.idx);
@@ -98,6 +111,19 @@ function renderRows(){
       renderRows();
     });
   });
+}
+
+function buildTierOptionsHtml(currentValue){
+  const options = [...TIER_OPTIONS];
+  // preserve any legacy/custom value not in the standard list, so data isn't silently lost
+  if(currentValue && !options.includes(currentValue)){
+    options.unshift(currentValue);
+  }
+  const blank = `<option value="" ${!currentValue ? 'selected' : ''}>-- 선택 --</option>`;
+  const rest = options.map(opt =>
+    `<option value="${escapeAttr(opt)}" ${opt === currentValue ? 'selected' : ''}>${escapeHtml(opt)}</option>`
+  ).join('');
+  return blank + rest;
 }
 
 $('#btnAddRow').addEventListener('click', () => {
