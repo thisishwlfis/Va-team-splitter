@@ -490,6 +490,23 @@ main{flex:1;}
 .map-result-badge-common{background:#FFF6DD; color:#8A6A00;}
 .map-result-badge-spin{background:#F0F0F2; color:var(--ink-soft);}
 
+.map-side-pills{
+  display:flex;
+  gap:6px;
+  margin-left:auto;
+}
+.map-side-pill{
+  font-size:10px;
+  font-weight:700;
+  padding:3px 8px;
+  border-radius:999px;
+  background:#F0F0F2;
+  color:var(--ink-soft);
+  white-space:nowrap;
+}
+.map-side-pill.attack{background:var(--red); color:#fff;}
+.map-side-pill.defense{background:var(--ink); color:#fff;}
+
 .map-result-item.spinning{
   background:var(--bg-alt);
   border-color:var(--red);
@@ -608,9 +625,8 @@ main{flex:1;}
   font-size:15px;
   letter-spacing:0.08em;
   margin-bottom:10px;
+  color:#000000;
 }
-.png-team-1 .png-team-title{color:var(--red-dark);}
-.png-team-2 .png-team-title{color:var(--ink);}
 .png-team-side{
   display:inline-block;
   font-family:var(--font-display);
@@ -631,14 +647,22 @@ main{flex:1;}
 }
 .png-player-item{
   display:flex;
-  align-items:center;
-  gap:7px;
+  align-items:baseline;
+  gap:5px;
   font-size:14px;
-  font-weight:700;
   background:#fff;
   border:1px solid var(--line);
   border-radius:9px;
   padding:9px 11px;
+}
+.png-player-name{
+  font-weight:800;
+  color:var(--ink);
+}
+.png-player-tag{
+  font-weight:600;
+  font-size:11px;
+  color:#B3B4BC;
 }
 .png-player-cap{
   font-size:10px;
@@ -683,6 +707,15 @@ main{flex:1;}
   padding:3px 10px;
   border-radius:999px;
   background:rgba(255,255,255,0.28);
+}
+.png-map-sides{
+  display:flex;
+  gap:8px;
+  margin-top:9px;
+  font-size:10px;
+  font-weight:700;
+  letter-spacing:0.02em;
+  opacity:0.9;
 }
 .png-footer{
   margin-top:32px;

@@ -11,7 +11,6 @@ const state = {
   teamOf: {},           // tag -> 1 | 2 | null
   groupOf: {},          // tag -> 1 | 2 | 3 | null (그룹 기능)
   captains: [],         // array of tags (max 2)
-  side: {},             // 1 -> 'attack'|'defense', 2 -> ...
   bo: null,             // 3 | 5 | 7 | 9
   teamMaps: { 1: [], 2: [] }, // tag -> selected maps per team
   mapAssignments: []    // [{game, map, source: 'team1'|'team2'|'common'}]
@@ -480,7 +479,6 @@ function enterScreen3(){
   state.bo = null;
   state.teamMaps = { 1: [], 2: [] };
   state.mapAssignments = [];
-  state.side = {};
 
   $$('#boSelect .bo-btn').forEach(btn => btn.classList.remove('active'));
   $('#mapPickerWrap').classList.add('hidden');
@@ -496,7 +494,6 @@ function selectBo(bo){
   state.bo = bo;
   state.teamMaps = { 1: [], 2: [] };
   state.mapAssignments = [];
-  state.side = {};
 
   $$('#boSelect .bo-btn').forEach(btn => {
     btn.classList.toggle('active', Number(btn.dataset.bo) === bo);
@@ -584,23 +581,38 @@ function assignMaps(){
 
   const finalAssignments = chosen.map((item, idx) => ({ game: idx + 1, map: item.map, source: item.source }));
 
-  const team1First = Math.random() < 0.5;
-  const finalSide = {
-    1: team1First ? 'attack' : 'defense',
-    2: team1First ? 'defense' : 'attack'
-  };
+  // 진영(공/수) 배정: 홀수 세트는 랜덤, 짝수 세트는 직전 세트에서 수비였던 팀이 공격을 가져감
+  const setSides = [];
+  finalAssignments.forEach((item, idx) => {
+    const g = idx + 1;
+    if(g % 2 === 1){
+      const team1First = Math.random() < 0.5;
+      setSides.push({
+        1: team1First ? 'attack' : 'defense',
+        2: team1First ? 'defense' : 'attack'
+      });
+    }else{
+      const prev = setSides[idx - 1];
+      setSides.push({
+        1: prev[1] === 'attack' ? 'defense' : 'attack',
+        2: prev[2] === 'attack' ? 'defense' : 'attack'
+      });
+    }
+    item.side1 = setSides[idx][1];
+    item.side2 = setSides[idx][2];
+  });
 
-  runMapRouletteAnimation(finalAssignments, finalSide);
+  runMapRouletteAnimation(finalAssignments);
 }
 
-function runMapRouletteAnimation(finalAssignments, finalSide){
+function runMapRouletteAnimation(finalAssignments){
   const box = $('#mapResultList');
   box.innerHTML = '';
   $('#btnAssignMaps').disabled = true;
   $('#btn3-next').disabled = true;
-  $('#mapResultWrap').classList.remove('hidden');
   $('#sideResultSetup').classList.add('hidden');
   $('#sideResultSetup').innerHTML = '';
+  $('#mapResultWrap').classList.remove('hidden');
 
   const rows = finalAssignments.map(item => {
     const row = document.createElement('div');
@@ -630,19 +642,26 @@ function runMapRouletteAnimation(finalAssignments, finalSide){
       const badge = row.querySelector('.map-result-badge');
       badge.textContent = MAP_SOURCE_LABEL[item.source];
       badge.className = `map-result-badge map-result-badge-${item.source}`;
+      row.insertAdjacentHTML('beforeend', buildSidePillsHtml(item));
 
       if(idx === rows.length - 1){
         state.mapAssignments = finalAssignments;
-        state.side = finalSide;
         setTimeout(() => {
-          renderSideResultUI();
-          $('#sideResultSetup').classList.remove('hidden');
           $('#btnAssignMaps').disabled = false;
           $('#btn3-next').disabled = false;
-        }, 300);
+        }, 200);
       }
     }, stopDelay);
   });
+}
+
+function buildSidePillsHtml(item){
+  return `
+    <div class="map-side-pills">
+      <span class="map-side-pill ${item.side1}">TEAM 1 · ${item.side1 === 'attack' ? '선공' : '선수비'}</span>
+      <span class="map-side-pill ${item.side2}">TEAM 2 · ${item.side2 === 'attack' ? '선공' : '선수비'}</span>
+    </div>
+  `;
 }
 
 function renderMapResults(targetSel){
@@ -655,37 +674,23 @@ function renderMapResults(targetSel){
       <span class="map-result-game">${item.game}세트</span>
       <span class="map-result-name">${escapeHtml(item.map)}</span>
       <span class="map-result-badge map-result-badge-${item.source}">${MAP_SOURCE_LABEL[item.source]}</span>
+      ${buildSidePillsHtml(item)}
     `;
     box.appendChild(row);
   });
-}
-
-function renderSideResultUI(){
-  const box = $('#sideResultSetup');
-  box.innerHTML = `
-    <button type="button" class="side-result-item ${state.side[1]}" id="sideToggle1">TEAM 1 · ${state.side[1] === 'attack' ? '선공' : '선수비'}</button>
-    <button type="button" class="side-result-item ${state.side[2]}" id="sideToggle2">TEAM 2 · ${state.side[2] === 'attack' ? '선공' : '선수비'}</button>
-  `;
-  $('#sideToggle1').addEventListener('click', toggleSides);
-  $('#sideToggle2').addEventListener('click', toggleSides);
-}
-
-function toggleSides(){
-  state.side[1] = state.side[1] === 'attack' ? 'defense' : 'attack';
-  state.side[2] = state.side[2] === 'attack' ? 'defense' : 'attack';
-  renderSideResultUI();
 }
 
 /* ---------------- SCREEN 4 : RESULT ---------------- */
 function enterScreen4(){
   renderResultLists();
 
+  const firstSet = state.mapAssignments[0];
   const s1 = $('#side1');
   const s2 = $('#side2');
-  s1.textContent = state.side[1] === 'attack' ? '선공' : (state.side[1] === 'defense' ? '선수비' : '-');
-  s2.textContent = state.side[2] === 'attack' ? '선공' : (state.side[2] === 'defense' ? '선수비' : '-');
-  s1.className = 'side-badge' + (state.side[1] ? ' ' + state.side[1] : '');
-  s2.className = 'side-badge' + (state.side[2] ? ' ' + state.side[2] : '');
+  s1.textContent = firstSet ? (firstSet.side1 === 'attack' ? '1세트 선공' : '1세트 선수비') : '-';
+  s2.textContent = firstSet ? (firstSet.side2 === 'attack' ? '1세트 선공' : '1세트 선수비') : '-';
+  s1.className = 'side-badge' + (firstSet ? ' ' + firstSet.side1 : '');
+  s2.className = 'side-badge' + (firstSet ? ' ' + firstSet.side2 : '');
 
   renderMapResults('#finalMapResultList');
 
@@ -733,6 +738,10 @@ function nicknameOnly(tag){
   return tag.split('#')[0];
 }
 
+function tagSuffix(tag){
+  return tag.includes('#') ? '#' + tag.split('#').slice(1).join('#') : '';
+}
+
 function buildPngExportNode(){
   const wrap = document.createElement('div');
   wrap.id = 'pngExportRoot';
@@ -744,10 +753,11 @@ function buildPngExportNode(){
   const t2Tags = state.selected.filter(t => state.teamOf[t] === 2);
 
   const sideLabel = (s) => s === 'attack' ? '선공' : (s === 'defense' ? '선수비' : '-');
+  const firstSet = state.mapAssignments[0];
 
   const playerItemHtml = (tag) => {
     const isCap = state.captains.includes(tag);
-    return `<div class="png-player-item">${isCap ? '<span class="png-player-cap">C</span>' : ''}<span>${escapeHtml(nicknameOnly(tag))}</span></div>`;
+    return `<div class="png-player-item">${isCap ? '<span class="png-player-cap">C</span>' : ''}<span class="png-player-name">${escapeHtml(nicknameOnly(tag))}</span><span class="png-player-tag">${escapeHtml(tagSuffix(tag))}</span></div>`;
   };
 
   const mapCardsHtml = state.mapAssignments.map(item => `
@@ -755,6 +765,10 @@ function buildPngExportNode(){
       <div class="png-map-set">SET ${item.game}</div>
       <div class="png-map-name">${escapeHtml(item.map)}</div>
       <div class="png-map-source">${MAP_SOURCE_LABEL[item.source]}</div>
+      <div class="png-map-sides">
+        <span>T1 ${sideLabel(item.side1)}</span>
+        <span>T2 ${sideLabel(item.side2)}</span>
+      </div>
     </div>
   `).join('');
 
@@ -769,13 +783,13 @@ function buildPngExportNode(){
       <div class="png-body">
         <div class="png-team png-team-1">
           <div class="png-team-title">TEAM 1</div>
-          <div class="png-team-side ${state.side[1] || ''}">${sideLabel(state.side[1])}</div>
+          <div class="png-team-side ${firstSet ? firstSet.side1 : ''}">${firstSet ? sideLabel(firstSet.side1) : '-'}</div>
           <div class="png-player-list">${t1Tags.map(playerItemHtml).join('')}</div>
         </div>
         <div class="png-maps">${mapCardsHtml}</div>
         <div class="png-team png-team-2">
           <div class="png-team-title">TEAM 2</div>
-          <div class="png-team-side ${state.side[2] || ''}">${sideLabel(state.side[2])}</div>
+          <div class="png-team-side ${firstSet ? firstSet.side2 : ''}">${firstSet ? sideLabel(firstSet.side2) : '-'}</div>
           <div class="png-player-list">${t2Tags.map(playerItemHtml).join('')}</div>
         </div>
       </div>
