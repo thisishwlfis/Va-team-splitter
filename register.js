@@ -11,8 +11,8 @@
    자신의 저장소 정보로 한 번만 수정하면 됩니다. owner/repo 이름은
    민감정보가 아니며(이미 사이트 주소에 노출됨), 토큰은 여기 들어가지 않습니다.
    ============================================================ */
-const OWNER = 'YOUR_GITHUB_ID';
-const REPO = 'YOUR_REPO_NAME';
+const OWNER = 'thisishwlfis';
+const REPO = 'Va-team-splitter';
 const REG_LABEL = 'registration-pending';
 
 const $ = (sel) => document.querySelector(sel);
