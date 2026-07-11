@@ -154,8 +154,6 @@ main{flex:1;}
   background:var(--red);
   border-color:var(--red);
 }
-.checkbox svg{opacity:0; transition:all .15s;}
-.player-card.checked .checkbox svg{opacity:1;}
 .player-name{
   font-size:14px;
   font-weight:600;
@@ -200,7 +198,6 @@ main{flex:1;}
   border:1.5px solid var(--line);
 }
 .btn-ghost:hover:not(:disabled){border-color:#C9CACF; color:var(--ink);}
-.btn-ghost:disabled{opacity:0.4; cursor:not-allowed;}
 
 /* TEAM ASSIGN SCREEN & AVG BOX */
 .team-columns{
@@ -280,7 +277,7 @@ main{flex:1;}
   margin-right: 2px;
 }
 
-.tag-chip{
+.tag-chip, .unassigned-chip{
   display:flex;
   flex-direction: column;
   align-items: stretch;
@@ -300,36 +297,11 @@ main{flex:1;}
 }
 .chip-top span { display: flex; align-items: center; }
 .remove-btn{
-  border:none;
-  background:none;
-  color:var(--ink-soft);
-  cursor:pointer;
-  font-size:15px;
-  padding:2px 4px;
+  border:none; background:none; color:var(--ink-soft); cursor:pointer; font-size:15px; padding:2px 4px;
 }
 .remove-btn:hover{color:var(--red);}
-
-.unassigned-chip{
-  display:flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 8px;
-  padding:10px 12px;
-  border-radius:12px;
-  background:var(--bg-alt);
-  border:1.5px solid var(--line);
-  font-size:13px;
-  font-weight:600;
-}
 .mini-btn{
-  border:1px solid var(--line);
-  background:#fff;
-  border-radius:6px;
-  font-size:11px;
-  font-weight:700;
-  padding:3px 7px;
-  cursor:pointer;
-  color:var(--ink-soft);
+  border:1px solid var(--line); background:#fff; border-radius:6px; font-size:11px; font-weight:700; padding:3px 7px; cursor:pointer; color:var(--ink-soft);
 }
 .mini-btn:hover{border-color:var(--red); color:var(--red);}
 
@@ -342,19 +314,13 @@ main{flex:1;}
 }
 .team-btns { display: flex; gap: 4px; }
 .group-controls {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  background: #F0F0F2;
-  padding: 4px 8px;
-  border-radius: 6px;
+  display: flex; align-items: center; gap: 6px; background: #F0F0F2; padding: 4px 8px; border-radius: 6px;
 }
 .group-label { font-size: 11px; font-weight: 700; color: var(--ink-soft); }
 .group-btn {
   width: 20px; height: 20px; border-radius: 4px; border: 1px solid #C9CACF;
   background: #fff; font-size: 10px; font-weight: 700; color: var(--ink-soft);
-  cursor: pointer; display: flex; align-items: center; justify-content: center;
-  padding: 0; transition: all 0.15s;
+  cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0;
 }
 .group-btn.active { background: var(--red-tint); border-color: var(--red); color: var(--red-dark); }
 .cap-btn {
@@ -367,8 +333,7 @@ main{flex:1;}
 .tier-badge {
   display: inline-flex; align-items: center; justify-content: center;
   min-width: 22px; height: 18px; padding: 0 5px; border-radius: 999px;
-  font-family: var(--font-display); font-size: 10px; font-weight: 700;
-  margin-left: 6px;
+  font-family: var(--font-display); font-size: 10px; font-weight: 700; margin-left: 6px;
 }
 
 /* ---- SEARCH BAR ---- */
