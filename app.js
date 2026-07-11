@@ -8,6 +8,7 @@ const state = {
   selected: [],        // array of tag strings (max 10)
   teamOf: {},           // tag -> 1 | 2 | null
   groupOf: {},          // tag -> 1 | 2 | 3 | null (그룹 기능)
+  captains: [],         // array of tags (max 2)
   side: {}              // 1 -> 'attack'|'defense', 2 -> ...
 };
 
@@ -207,200 +208,136 @@ function updateSelectUI(){
 function enterScreen2(){
   state.teamOf = {};
   state.groupOf = {};
+  state.captains = [];
   state.selected.forEach(tag => {
     state.teamOf[tag] = null;
     state.groupOf[tag] = null;
   });
+  initTeamColumnsUI();
   renderTeamScreen();
   showScreen(2);
 }
 
-function getTierScore(tier) {
+function getTierScoreExact(tier) {
   if (!tier) return 0;
-  const rankScores = { 'Iron':10, 'Bronze':20, 'Silver':30, 'Gold':40, 'Platinum':50, 'Diamond':60, 'Ascendant':70, 'Immortal':80, 'Radiant':90 };
+  const ranks = ['Iron', 'Bronze', 'Silver', 'Gold', 'Platinum', 'Diamond', 'Ascendant', 'Immortal'];
   const parts = tier.split(' ');
   const rank = parts[0];
   const num = parseInt(parts[1]) || 0;
-  return (rankScores[rank] || 0) + num;
+  
+  if (rank === 'Radiant') return 25;
+  const idx = ranks.indexOf(rank);
+  if (idx === -1) return 0;
+  return (idx * 3) + num;
 }
 
 function sortSelected(asc = false) {
   state.selected.sort((a, b) => {
     const pA = getPlayerByTag(a);
     const pB = getPlayerByTag(b);
-    const sA = getTierScore(pA.tier);
-    const sB = getTierScore(pB.tier);
+    const sA = getTierScoreExact(pA.tier);
+    const sB = getTierScoreExact(pB.tier);
     return asc ? sA - sB : sB - sA;
   });
   renderTeamScreen();
 }
 
 function assignTeam(tag, teamNum) {
-  const group = state.groupOf[tag];
-  if (group) {
-    state.selected.forEach(t => {
-      if (state.groupOf[t] === group) {
-        state.teamOf[t] = teamNum;
-      }
-    });
-  } else {
+  // 팀장이 팀을 이동할 때, 상대 팀장과 팀이 겹치면 상대 팀장을 스왑 (강제 분리)
+  if (state.captains.includes(tag)) {
     state.teamOf[tag] = teamNum;
+    if (teamNum !== null) {
+      const otherCap = state.captains.find(c => c !== tag);
+      if (otherCap && state.teamOf[otherCap] === teamNum) {
+        state.teamOf[otherCap] = teamNum === 1 ? 2 : 1;
+      }
+    }
+  } else {
+    // 그룹 로직 반영
+    const group = state.groupOf[tag];
+    if (group) {
+      state.selected.forEach(t => {
+        if (state.groupOf[t] === group) {
+          state.teamOf[t] = teamNum;
+        }
+      });
+    } else {
+      state.teamOf[tag] = teamNum;
+    }
   }
   renderTeamScreen();
 }
 
-function wireGroupButtons(chip, tag) {
+function toggleCaptain(tag) {
+  if (state.captains.includes(tag)) {
+    state.captains = state.captains.filter(t => t !== tag);
+  } else {
+    if (state.captains.length >= 2) return;
+    state.captains.push(tag);
+    
+    // 자동 배정 로직 (1번째 팀장은 1팀, 2번째 팀장은 무조건 반대팀)
+    if (state.captains.length === 1) {
+      assignTeam(tag, 1);
+    } else if (state.captains.length === 2) {
+      const firstCapTeam = state.teamOf[state.captains[0]] || 1;
+      const secondCapTeam = firstCapTeam === 1 ? 2 : 1;
+      assignTeam(tag, secondCapTeam);
+    }
+  }
+  renderTeamScreen();
+}
+
+function wireControlButtons(chip, tag) {
   chip.querySelectorAll('.group-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       const g = Number(btn.dataset.group);
-      if (state.groupOf[tag] === g) {
-        state.groupOf[tag] = null; // Toggle off
-      } else {
-        state.groupOf[tag] = g;
-      }
+      state.groupOf[tag] = (state.groupOf[tag] === g) ? null : g;
       renderTeamScreen();
     });
   });
+  
+  chip.querySelector('.cap-btn').addEventListener('click', () => {
+    toggleCaptain(tag);
+  });
 }
 
-function renderTeamScreen(){
-  const team1List = $('#team1List');
-  const team2List = $('#team2List');
-  const unassigned = $('#unassignedList');
-  team1List.innerHTML = '';
-  team2List.innerHTML = '';
-  unassigned.innerHTML = '';
-
-  // Add Sort Controls if they don't exist
-  if(!$('#sortControls')) {
-    const sortControls = document.createElement('div');
-    sortControls.id = 'sortControls';
-    sortControls.className = 'sort-controls';
-    sortControls.innerHTML = `
-      <button class="mini-btn" id="btnSortDesc">티어 내림차순</button>
-      <button class="mini-btn" id="btnSortAsc">티어 올림차순</button>
-    `;
-    $('#unassignedList').parentNode.insertBefore(sortControls, $('#unassignedList'));
-
-    $('#btnSortDesc').addEventListener('click', () => sortSelected(false));
-    $('#btnSortAsc').addEventListener('click', () => sortSelected(true));
-  }
-
-  state.selected.forEach(tag=>{
-    const teamNum = state.teamOf[tag];
-    const player = getPlayerByTag(tag);
-    const groupNum = state.groupOf[tag];
+function initTeamColumnsUI() {
+  if(!$('#advantageBox')) {
+    const columnsWrap = document.querySelector('.team-columns');
+    columnsWrap.style.gridTemplateColumns = '1fr auto 1fr';
     
-    const groupHtml = `
-      <div class="group-controls">
-        <span class="group-label">그룹</span>
-        <button class="group-btn ${groupNum === 1 ? 'active' : ''}" data-group="1">1</button>
-        <button class="group-btn ${groupNum === 2 ? 'active' : ''}" data-group="2">2</button>
-        <button class="group-btn ${groupNum === 3 ? 'active' : ''}" data-group="3">3</button>
-      </div>
-    `;
-
-    if(teamNum === 1 || teamNum === 2){
-      const chip = document.createElement('div');
-      chip.className = 'tag-chip has-group';
-      chip.innerHTML = `
-        <div class="chip-top">
-          <span>${escapeHtml(tag)} ${getTierBadgeHtml(player.tier)}</span>
-          <button class="remove-btn" aria-label="제거">✕</button>
-        </div>
-        ${groupHtml}
-      `;
-      chip.querySelector('.remove-btn').addEventListener('click', ()=>{
-        assignTeam(tag, null);
-      });
-      wireGroupButtons(chip, tag);
-      (teamNum === 1 ? team1List : team2List).appendChild(chip);
-    }else{
-      const chip = document.createElement('div');
-      chip.className = 'unassigned-chip has-group';
-      
-      const groupSize = groupNum ? state.selected.filter(t => state.groupOf[t] === groupNum).length : 1;
-      const t1full = countTeam(1) + groupSize > 5;
-      const t2full = countTeam(2) + groupSize > 5;
-
-      chip.innerHTML = `
-        <div class="chip-top">
-          <span>${escapeHtml(tag)} ${getTierBadgeHtml(player.tier)}</span>
-          <div class="team-btns">
-            <button class="mini-btn team-btn" data-team="1" ${t1full ? 'disabled' : ''}>1팀</button>
-            <button class="mini-btn team-btn" data-team="2" ${t2full ? 'disabled' : ''}>2팀</button>
-          </div>
-        </div>
-        ${groupHtml}
-      `;
-      chip.querySelectorAll('.team-btn').forEach(btn=>{
-        btn.addEventListener('click', ()=>{
-          assignTeam(tag, Number(btn.dataset.team));
-        });
-      });
-      wireGroupButtons(chip, tag);
-      unassigned.appendChild(chip);
-    }
-  });
-
-  const c1 = countTeam(1), c2 = countTeam(2);
-  $('#teamCounter').textContent = `1팀 ${c1}명 · 2팀 ${c2}명`;
-  $('#btn2-next').disabled = !(c1 === 5 && c2 === 5);
+    const col1 = columnsWrap.children[0];
+    const col2 = columnsWrap.children[1];
+    
+    const advCol = document.createElement('div');
+    advCol.className = 'adv-col';
+    advCol.innerHTML = '<div class="adv-box" id="advantageBox">대기중</div>';
+    columnsWrap.insertBefore(advCol, col2);
+    
+    const avg1 = document.createElement('div');
+    avg1.className = 'team-avg';
+    avg1.id = 't1AvgBox';
+    avg1.textContent = '평균: 0.00';
+    col1.appendChild(avg1);
+    
+    const avg2 = document.createElement('div');
+    avg2.className = 'team-avg';
+    avg2.id = 't2AvgBox';
+    avg2.textContent = '평균: 0.00';
+    col2.appendChild(avg2);
+  }
 }
 
-function countTeam(n){
-  return state.selected.filter(tag => state.teamOf[tag] === n).length;
-}
-
-/* ---------------- SCREEN 3 : RESULT ---------------- */
-function enterScreen3(){
-  renderResultLists();
-  $('#side1').textContent = '-';
-  $('#side1').className = 'side-badge';
-  $('#side2').textContent = '-';
-  $('#side2').className = 'side-badge';
-  showScreen(3);
-}
-
-function renderResultLists(){
-  const t1 = $('#resultTeam1');
-  const t2 = $('#resultTeam2');
-  t1.innerHTML = '';
-  t2.innerHTML = '';
-  state.selected.forEach(tag=>{
-    const player = getPlayerByTag(tag);
-    const chip = document.createElement('div');
-    chip.className = 'tag-chip';
-    chip.style.justifyContent = 'flex-start';
-    chip.innerHTML = `<span>${escapeHtml(tag)} ${getTierBadgeHtml(player.tier)}</span>`;
-    if(state.teamOf[tag] === 1) t1.appendChild(chip);
-    if(state.teamOf[tag] === 2) t2.appendChild(chip);
-  });
-}
-
-function rollSides(){
-  const team1First = Math.random() < 0.5;
-  const s1 = $('#side1');
-  const s2 = $('#side2');
-  s1.textContent = team1First ? '선공' : '선수비';
-  s2.textContent = team1First ? '선수비' : '선공';
-  s1.className = 'side-badge ' + (team1First ? 'attack' : 'defense');
-  s2.className = 'side-badge ' + (team1First ? 'defense' : 'attack');
-}
-
-/* ---------------- UTIL ---------------- */
-function escapeHtml(str){
-  return str.replace(/[&<>"']/g, c => ({
-    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
-  }[c]));
-}
-
-/* ---------------- NAV WIRING ---------------- */
-$('#btn1-next').addEventListener('click', enterScreen2);
-$('#btn2-back').addEventListener('click', () => showScreen(1));
-$('#btn2-next').addEventListener('click', enterScreen3);
-$('#btn3-back').addEventListener('click', () => showScreen(2));
-$('#btn3-roll').addEventListener('click', rollSides);
-
-/* ---------------- INIT ---------------- */
-loadPlayers();
+function updateAveragesUI() {
+  const t1Tags = state.selected.filter(t => state.teamOf[t] === 1);
+  const t2Tags = state.selected.filter(t => state.teamOf[t] === 2);
+  
+  let t1Sum = 0, t2Sum = 0;
+  t1Tags.forEach(t => t1Sum += getTierScoreExact(getPlayerByTag(t).tier));
+  t2Tags.forEach(t => t2Sum += getTierScoreExact(getPlayerByTag(t).tier));
+  
+  const t1Avg = t1Tags.length ? t1Sum / t1Tags.length : 0;
+  const t2Avg = t2Tags.length ? t2Sum / t2Tags.length : 0;
+  
+  $('#t1AvgBox').textContent = t1Tags.length ? `평균: ${t1Avg.toFixed(2)}` : '평균: 0.00';
+  $('#t2AvgBox').textContent = t2Tags.length ?
