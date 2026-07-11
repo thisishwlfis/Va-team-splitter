@@ -913,6 +913,49 @@ main{flex:1;}
 .btn-reject:hover{background:var(--red-tint);}
 .btn-reject:disabled{opacity:0.5; cursor:not-allowed;}
 
+/* ---- TEMP (ONE-OFF) PARTICIPANT ADD ---- */
+.temp-add-wrap{margin-bottom:24px;}
+.temp-add-panel{
+  margin-top:12px;
+  padding:14px;
+  border:1.5px dashed var(--line);
+  border-radius:var(--radius);
+  background:var(--bg-alt);
+}
+.temp-add-fields{
+  display:grid;
+  grid-template-columns:1.4fr 1fr 1fr auto;
+  gap:8px;
+}
+@media (max-width:640px){
+  .temp-add-fields{grid-template-columns:1fr 1fr;}
+}
+.temp-add-fields input,
+.temp-add-fields select{
+  font-family:var(--font-body);
+  font-size:13px;
+  font-weight:600;
+  padding:9px 10px;
+  border-radius:8px;
+  border:1.5px solid var(--line);
+  background:#fff;
+  outline:none;
+}
+.temp-add-fields input:focus,
+.temp-add-fields select:focus{border-color:var(--red);}
+.temp-add-fields .btn{padding:9px 18px; font-size:13px;}
+.player-card.temp-player{border-style:dashed;}
+.temp-badge{
+  font-size:9px;
+  font-weight:800;
+  color:var(--red-dark);
+  background:var(--red-tint);
+  border-radius:6px;
+  padding:1px 5px;
+  margin-left:4px;
+  vertical-align:middle;
+}
+
 /* ---- custom tier picker (inline expanding panel) ---- */
 .tier-trigger{
   width:100%;

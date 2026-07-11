@@ -169,7 +169,7 @@ function renderPlayerGrid(){
   grid.innerHTML = '';
   state.players.forEach(p=>{
     const card = document.createElement('div');
-    card.className = 'player-card';
+    card.className = 'player-card' + (p.temp ? ' temp-player' : '');
     card.dataset.tag = p.tag;
     card.innerHTML = `
       <span class="checkbox">
@@ -177,7 +177,7 @@ function renderPlayerGrid(){
           <path d="M1 4.5L4 7.5L10 1.5" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
         </svg>
       </span>
-      <span class="player-name">${escapeHtml(p.tag)} ${getTierBadgeHtml(p.tier)}</span>
+      <span class="player-name">${escapeHtml(p.tag)} ${getTierBadgeHtml(p.tier)}${p.temp ? '<span class="temp-badge">임시</span>' : ''}</span>
     `;
     card.addEventListener('click', () => toggleSelect(p.tag, card));
     grid.appendChild(card);
@@ -848,6 +848,61 @@ function escapeHtml(str){
   return str.replace(/[&<>"']/g, c => ({
     '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
   }[c]));
+}
+
+/* ---------------- TEMP (ONE-OFF) PARTICIPANT ADD ---------------- */
+const TEMP_TIER_RANKS = ['Iron', 'Bronze', 'Silver', 'Gold', 'Platinum', 'Diamond', 'Ascendant', 'Immortal'];
+
+function populateTempTierSelect(){
+  const sel = $('#tempTier');
+  if(!sel || sel.dataset.filled) return;
+  const opts = TEMP_TIER_RANKS.flatMap(r => [1,2,3].map(n => `${r} ${n}`));
+  opts.push('Radiant');
+  opts.forEach(v => {
+    const opt = document.createElement('option');
+    opt.value = v;
+    opt.textContent = v;
+    sel.appendChild(opt);
+  });
+  sel.dataset.filled = '1';
+}
+
+function addTempPlayer(){
+  const msg = $('#tempAddMsg');
+  msg.classList.add('hidden');
+
+  const tag = $('#tempTag').value.trim();
+  const name = $('#tempName').value.trim();
+  const tier = $('#tempTier').value;
+
+  if(!tag){
+    msg.classList.remove('hidden');
+    msg.innerHTML = '닉네임#태그를 입력해주세요.';
+    return;
+  }
+  if(state.players.some(p => p.tag === tag)){
+    msg.classList.remove('hidden');
+    msg.innerHTML = '이미 같은 닉네임#태그가 목록에 있습니다.';
+    return;
+  }
+
+  state.players.push({ tag, name, tier, temp: true });
+  renderPlayerGrid();
+
+  $('#tempTag').value = '';
+  $('#tempName').value = '';
+  $('#tempTier').value = '';
+  $('#tempTag').focus();
+}
+
+if($('#btnToggleTempAdd')){
+  populateTempTierSelect();
+  $('#btnToggleTempAdd').addEventListener('click', () => {
+    $('#tempAddPanel').classList.toggle('hidden');
+  });
+  $('#btnAddTemp').addEventListener('click', addTempPlayer);
+  $('#tempTag').addEventListener('keydown', (e) => { if(e.key === 'Enter') addTempPlayer(); });
+  $('#tempName').addEventListener('keydown', (e) => { if(e.key === 'Enter') addTempPlayer(); });
 }
 
 /* ---------------- NAV WIRING ---------------- */

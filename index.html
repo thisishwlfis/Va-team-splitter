@@ -34,6 +34,27 @@
         <div id="playerGrid" class="player-grid">
           <!-- filled by JS -->
         </div>
+
+        <div class="temp-add-wrap">
+          <button type="button" class="mini-btn" id="btnToggleTempAdd">+ 임시 참가자 추가 (이번만 사용)</button>
+          <div id="tempAddPanel" class="temp-add-panel hidden">
+            <p class="hint-text" style="margin-bottom:10px;">
+              여기서 추가한 참가자는 <b>이번 팀 나누기에서만</b> 사용되고 저장되지 않습니다.
+              고정 멤버로 계속 쓰려면 <a href="register.html">참가자 등록 신청</a> 또는
+              <a href="admin.html">참가자 관리</a>를 이용하세요.
+            </p>
+            <div class="temp-add-fields">
+              <input type="text" id="tempTag" placeholder="닉네임#태그 (필수)" />
+              <input type="text" id="tempName" placeholder="실명 (선택)" />
+              <select id="tempTier">
+                <option value="">티어 선택 (선택)</option>
+              </select>
+              <button type="button" class="btn btn-primary" id="btnAddTemp">추가</button>
+            </div>
+            <div id="tempAddMsg" class="load-error hidden"></div>
+          </div>
+        </div>
+
         <div class="nav-row">
           <button class="btn btn-ghost" id="btn1-back" disabled>이전</button>
           <button class="btn btn-primary" id="btn1-next" disabled>다음</button>
