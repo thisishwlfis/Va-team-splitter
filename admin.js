@@ -92,11 +92,21 @@ function renderRows(){
     const row = document.createElement('div');
     row.className = 'admin-row';
 
+    const { rank, num } = parseTier(p.tier);
+    const c = tierColor(rank);
+    const triggerLabel = rank ? (rank === 'Radiant' ? 'Radiant' : `${rank} ${num || ''}`.trim()) : '티어 선택';
+    const triggerStyle = rank
+      ? `background:${c.bg}; color:${c.text};`
+      : `background:#F0F0F2; color:#9A9BA3; border:1.5px dashed #D8D9DE;`;
+
     row.innerHTML = `
       <input type="text" data-field="tag" data-idx="${idx}" value="${escapeAttr(p.tag)}" placeholder="닉네임#태그" />
       <input type="text" data-field="name" data-idx="${idx}" value="${escapeAttr(p.name)}" placeholder="실명" />
-      ${buildTierPickerHtml(idx, p.tier)}
+      <button type="button" class="tier-trigger" data-idx="${idx}" style="${triggerStyle}">${escapeHtml(triggerLabel)}</button>
       <button class="row-delete" data-idx="${idx}" aria-label="삭제">✕</button>
+      <div class="tier-panel" data-idx="${idx}">
+        <div class="tier-panel-inner">${buildTierGroupsHtml(idx, p.tier)}</div>
+      </div>
     `;
     wrap.appendChild(row);
   });
@@ -118,7 +128,7 @@ function renderRows(){
   wireTierPickers(wrap);
 }
 
-/* ---------------- CUSTOM TIER PICKER ---------------- */
+/* ---------------- CUSTOM TIER PICKER (inline expanding panel) ---------------- */
 function parseTier(value){
   if(!value) return { rank:null, num:null };
   if(value === 'Radiant') return { rank:'Radiant', num:null };
@@ -130,21 +140,7 @@ function tierColor(rank){
   return TIER_COLORS[rank] || { bg:'#E7E7EA', text:'#6B6D76' };
 }
 
-function buildTierPickerHtml(idx, currentValue){
-  const { rank, num } = parseTier(currentValue);
-  const c = tierColor(rank);
-  const triggerLabel = rank ? (rank === 'Radiant' ? 'Radiant' : `${rank} ${num || ''}`.trim()) : '티어 선택';
-  const triggerStyle = rank
-    ? `background:${c.bg}; color:${c.text};`
-    : `background:#F0F0F2; color:#9A9BA3; border:1.5px dashed #D8D9DE;`;
-
-  return `
-    <div class="tier-picker" data-idx="${idx}">
-      <button type="button" class="tier-trigger" data-idx="${idx}" style="${triggerStyle}">${escapeHtml(triggerLabel)}</button>
-    </div>`;
-}
-
-function buildTierPanelHtml(idx, currentValue){
+function buildTierGroupsHtml(idx, currentValue){
   const { rank, num } = parseTier(currentValue);
 
   const groupsHtml = TIER_RANKS.map(r => {
@@ -167,82 +163,40 @@ function buildTierPanelHtml(idx, currentValue){
       <button type="button" class="tier-chip tier-chip-btn ${radiantActive ? 'active' : ''}" style="background:${rc.bg}; color:${rc.text};" data-idx="${idx}" data-rank="Radiant" data-num="">Radiant</button>
     </div>`;
 
-  return `<div class="tier-panel" data-idx="${idx}">${groupsHtml}${radiantHtml}</div>`;
+  return groupsHtml + radiantHtml;
 }
 
-let openTierPanel = null;
-
-function closeTierPanel(){
-  if(openTierPanel){
-    openTierPanel.remove();
-    openTierPanel = null;
-  }
-  window.removeEventListener('scroll', repositionOpenPanel, true);
-  window.removeEventListener('resize', repositionOpenPanel);
-}
-
-function repositionOpenPanel(){
-  if(!openTierPanel) return;
-  const idx = openTierPanel.dataset.idx;
-  const trigger = document.querySelector(`.tier-trigger[data-idx="${idx}"]`);
-  if(!trigger){ closeTierPanel(); return; }
-  positionPanel(trigger, openTierPanel);
-}
-
-function positionPanel(trigger, panel){
-  const rect = trigger.getBoundingClientRect();
-  const panelWidth = panel.offsetWidth || 230;
-  let left = rect.left;
-  if(left + panelWidth > window.innerWidth - 12){
-    left = Math.max(12, window.innerWidth - panelWidth - 12);
-  }
-  panel.style.left = `${left}px`;
-  panel.style.top = `${rect.bottom + 6}px`;
-}
-
-function openTierPanelFor(trigger){
-  const idx = Number(trigger.dataset.idx);
-  const wasOpenForSameIdx = openTierPanel && openTierPanel.dataset.idx === String(idx);
-  closeTierPanel();
-  if(wasOpenForSameIdx) return;
-
-  const panel = document.createElement('div');
-  panel.innerHTML = buildTierPanelHtml(idx, players[idx].tier);
-  const panelEl = panel.firstElementChild;
-  panelEl.style.position = 'fixed';
-  document.body.appendChild(panelEl);
-  openTierPanel = panelEl;
-
-  positionPanel(trigger, panelEl);
-
-  panelEl.querySelectorAll('.tier-num-btn, .tier-chip-btn').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      const i = Number(btn.dataset.idx);
-      const rank = btn.dataset.rank;
-      const num = btn.dataset.num;
-      players[i].tier = rank === 'Radiant' ? 'Radiant' : `${rank} ${num}`;
-      closeTierPanel();
-      renderRows();
-    });
-  });
-
-  window.addEventListener('scroll', repositionOpenPanel, true);
-  window.addEventListener('resize', repositionOpenPanel);
+function closeAllTierPanels(scope){
+  (scope || document).querySelectorAll('.tier-panel.open').forEach(p => p.classList.remove('open'));
 }
 
 function wireTierPickers(wrap){
   wrap.querySelectorAll('.tier-trigger').forEach(btn => {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
-      openTierPanelFor(btn);
+      const idx = btn.dataset.idx;
+      const panel = wrap.querySelector(`.tier-panel[data-idx="${idx}"]`);
+      const wasOpen = panel.classList.contains('open');
+      closeAllTierPanels(wrap);
+      if(!wasOpen) panel.classList.add('open');
+    });
+  });
+
+  wrap.querySelectorAll('.tier-num-btn, .tier-chip-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const idx = Number(btn.dataset.idx);
+      const rank = btn.dataset.rank;
+      const num = btn.dataset.num;
+      players[idx].tier = rank === 'Radiant' ? 'Radiant' : `${rank} ${num}`;
+      renderRows();
     });
   });
 }
 
 document.addEventListener('click', (e) => {
-  if(openTierPanel && !openTierPanel.contains(e.target)){
-    closeTierPanel();
+  if(!e.target.closest('.tier-panel') && !e.target.closest('.tier-trigger')){
+    closeAllTierPanels(document);
   }
 });
 

@@ -440,10 +440,7 @@ main{flex:1;}
 }
 .row-delete:hover{border-color:var(--red); color:var(--red);}
 
-/* ---- custom tier picker ---- */
-.tier-picker{
-  position:relative;
-}
+/* ---- custom tier picker (inline expanding panel) ---- */
 .tier-trigger{
   width:100%;
   font-family:var(--font-display);
@@ -461,17 +458,30 @@ main{flex:1;}
 .tier-trigger:active{transform:scale(0.97);}
 
 .tier-panel{
-  position:fixed;
-  z-index:1000;
-  min-width:230px;
-  background:#fff;
-  border:1.5px solid var(--line);
-  border-radius:12px;
-  box-shadow:0 10px 30px rgba(20,20,25,0.16);
-  padding:10px;
+  grid-column:1 / -1;
+  max-height:0;
+  overflow:hidden;
+  transition:max-height .32s cubic-bezier(.4,0,.2,1);
+}
+.tier-panel.open{
+  max-height:420px;
+}
+.tier-panel-inner{
   display:flex;
   flex-direction:column;
   gap:6px;
+  background:var(--bg-alt);
+  border:1.5px solid var(--line);
+  border-radius:12px;
+  padding:10px;
+  margin:8px 0 4px;
+  opacity:0;
+  transform:translateY(-6px);
+  transition:opacity .22s ease, transform .22s ease;
+}
+.tier-panel.open .tier-panel-inner{
+  opacity:1;
+  transform:translateY(0);
 }
 .tier-group{
   display:flex;
@@ -513,7 +523,7 @@ main{flex:1;}
   height:26px;
   border-radius:8px;
   border:1.5px solid var(--line);
-  background:var(--bg-alt);
+  background:#fff;
   font-size:12px;
   font-weight:700;
   color:var(--ink-soft);
@@ -530,6 +540,6 @@ main{flex:1;}
 @media (max-width:640px){
   .admin-table-head{display:none;}
   .admin-row{grid-template-columns:1fr 1fr; row-gap:8px;}
-  .tier-picker{grid-column:span 2;}
+  .tier-trigger{grid-column:span 2;}
   .row-delete{grid-column:span 2; justify-self:end; width:auto; padding:6px 12px;}
 }
