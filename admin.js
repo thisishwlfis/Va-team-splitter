@@ -1,6 +1,61 @@
 const $ = (sel) => document.querySelector(sel);
 const $$ = (sel) => Array.from(document.querySelectorAll(sel));
 
+/* ============================================================
+   관리자 화면 비밀번호 잠금 (보조 장치)
+   ⚠️ 이 값은 브라우저 코드에 그대로 남아있으므로 진짜 보안이 아닙니다.
+   실수로 admin.html 링크를 눌러본 사람을 막는 정도의 용도입니다.
+   실제 데이터 변경 권한은 이 브라우저에 저장하는 GitHub 토큰이 담당합니다.
+
+   비밀번호를 바꾸려면: 브라우저 콘솔에서 아래를 실행해 해시를 구한 뒤
+   ADMIN_PASSWORD_HASH 값을 교체하세요.
+     crypto.subtle.digest('SHA-256', new TextEncoder().encode('원하는비밀번호'))
+       .then(b => console.log(Array.from(new Uint8Array(b)).map(x=>x.toString(16).padStart(2,'0')).join('')))
+   ============================================================ */
+const ADMIN_PASSWORD_HASH = 'REPLACE_WITH_YOUR_SHA256_HASH';
+const ADMIN_SESSION_KEY = 'teamsplit_admin_unlocked';
+
+async function sha256Hex(str){
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+function isUnlocked(){
+  return sessionStorage.getItem(ADMIN_SESSION_KEY) === '1';
+}
+
+function showLogin(){
+  $('#loginPanel').classList.remove('hidden');
+  $('#setupPanel').classList.add('hidden');
+  $('#editorPanel').classList.add('hidden');
+}
+
+$('#btnLogin').addEventListener('click', attemptLogin);
+$('#loginPassword').addEventListener('keydown', (e) => {
+  if(e.key === 'Enter') attemptLogin();
+});
+
+async function attemptLogin(){
+  const errBox = $('#loginError');
+  errBox.classList.add('hidden');
+  const pw = $('#loginPassword').value;
+  if(ADMIN_PASSWORD_HASH === 'REPLACE_WITH_YOUR_SHA256_HASH'){
+    errBox.classList.remove('hidden');
+    errBox.innerHTML = '<strong>설정 필요</strong><br>admin.js 상단의 ADMIN_PASSWORD_HASH가 아직 설정되지 않았습니다.';
+    return;
+  }
+  const hash = await sha256Hex(pw);
+  if(hash === ADMIN_PASSWORD_HASH){
+    sessionStorage.setItem(ADMIN_SESSION_KEY, '1');
+    $('#loginPanel').classList.add('hidden');
+    $('#loginPassword').value = '';
+    init();
+  }else{
+    errBox.classList.remove('hidden');
+    errBox.innerHTML = '<strong>비밀번호가 올바르지 않습니다.</strong>';
+  }
+}
+
 const TIER_RANKS = ['Iron', 'Bronze', 'Silver', 'Gold', 'Platinum', 'Diamond', 'Ascendant', 'Immortal'];
 const TIER_OPTIONS = TIER_RANKS.flatMap(rank => [1, 2, 3].map(n => `${rank} ${n}`));
 TIER_OPTIONS.push('Radiant');
@@ -24,8 +79,17 @@ function init(){
   if(GitHubStore.hasConfig()){
     showEditor();
     loadPlayers();
+    loadPendingRequests();
   }else{
     showSetup();
+  }
+}
+
+function boot(){
+  if(isUnlocked()){
+    init();
+  }else{
+    showLogin();
   }
 }
 
@@ -250,4 +314,96 @@ function escapeHtml(str){
 }
 function escapeAttr(str){ return escapeHtml(str); }
 
-init();
+/* ---------------- PENDING REGISTRATION REQUESTS ---------------- */
+
+async function loadPendingRequests(){
+  const status = $('#pendingStatus');
+  const list = $('#pendingList');
+  status.textContent = '불러오는 중...';
+  try{
+    const cfg = GitHubStore.getConfig();
+    const pending = await GitHubStore.fetchPendingRequests(cfg);
+    status.textContent = `${pending.length}건 대기 중`;
+    renderPendingList(pending);
+  }catch(err){
+    status.textContent = '';
+    list.innerHTML = `<div class="load-error">${escapeHtml(err.message)}</div>`;
+  }
+}
+
+function renderPendingList(pending){
+  const list = $('#pendingList');
+  list.innerHTML = '';
+  if(pending.length === 0){
+    list.innerHTML = '<div class="pending-empty">대기 중인 신청이 없습니다.</div>';
+    return;
+  }
+  pending.forEach(issue => {
+    const card = document.createElement('div');
+    card.className = 'pending-card';
+    const rowsHtml = issue.players.map(p => `
+      <div class="pending-player-row">
+        <span class="p-tag">${escapeHtml(p.tag || '')}</span>
+        <span class="p-name">${escapeHtml(p.name || '-')}</span>
+        <span class="p-tier">${escapeHtml(p.tier || '-')}</span>
+      </div>
+    `).join('');
+    card.innerHTML = `
+      <div class="pending-card-head">
+        <span class="pending-card-title">${escapeHtml(issue.title)}</span>
+        <span class="pending-card-time">${new Date(issue.createdAt).toLocaleString('ko-KR')}</span>
+      </div>
+      ${rowsHtml}
+      <div class="pending-card-actions">
+        <button class="btn-approve" data-issue="${issue.number}">승인 · 명단에 추가</button>
+        <button class="btn-reject" data-issue="${issue.number}">반려</button>
+        <a href="${issue.url}" target="_blank" class="mini-btn" style="text-decoration:none; align-self:center;">이슈 보기</a>
+      </div>
+    `;
+    list.appendChild(card);
+
+    card.querySelector('.btn-approve').addEventListener('click', () => approveRequest(issue));
+    card.querySelector('.btn-reject').addEventListener('click', () => rejectRequest(issue));
+  });
+}
+
+async function approveRequest(issue){
+  const cfg = GitHubStore.getConfig();
+  const buttons = $$(`.pending-card-actions button[data-issue="${issue.number}"]`);
+  buttons.forEach(b => b.disabled = true);
+  try{
+    const additions = issue.players
+      .map(p => ({ tag:(p.tag||'').trim(), name:(p.name||'').trim(), tier:(p.tier||'').trim() }))
+      .filter(p => p.tag !== '');
+    const merged = players.concat(additions);
+    const result = await GitHubStore.saveFile(cfg, merged, currentSha);
+    currentSha = result.content ? result.content.sha : currentSha;
+    players = merged;
+    renderRows();
+    $('#editorStatus').textContent = `${players.length}명 · 마지막 저장: 방금`;
+
+    await GitHubStore.closeIssue(cfg, issue.number, '승인되어 참가자 명단에 반영되었습니다.');
+    loadPendingRequests();
+  }catch(err){
+    alert(`승인 처리 실패: ${err.message}`);
+    buttons.forEach(b => b.disabled = false);
+  }
+}
+
+async function rejectRequest(issue){
+  if(!confirm('이 신청을 반려하시겠습니까? (명단에는 추가되지 않고 이슈만 닫힙니다)')) return;
+  const cfg = GitHubStore.getConfig();
+  const buttons = $$(`.pending-card-actions button[data-issue="${issue.number}"]`);
+  buttons.forEach(b => b.disabled = true);
+  try{
+    await GitHubStore.closeIssue(cfg, issue.number, '반려되어 명단에 반영되지 않았습니다.');
+    loadPendingRequests();
+  }catch(err){
+    alert(`반려 처리 실패: ${err.message}`);
+    buttons.forEach(b => b.disabled = false);
+  }
+}
+
+$('#btnRefreshPending').addEventListener('click', loadPendingRequests);
+
+boot();

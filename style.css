@@ -842,6 +842,77 @@ main{flex:1;}
 }
 .row-delete:hover{border-color:var(--red); color:var(--red);}
 
+.admin-table-head.no-delete,
+.admin-row.no-delete{
+  grid-template-columns:1.4fr 1fr 1fr;
+}
+@media (max-width:640px){
+  .admin-row.no-delete{grid-template-columns:1fr 1fr;}
+}
+
+/* ---- PENDING REGISTRATION APPROVAL LIST ---- */
+.pending-section{margin-bottom:28px;}
+.pending-empty{
+  padding:20px;
+  text-align:center;
+  font-size:13px;
+  color:var(--ink-soft);
+  border:1.5px dashed var(--line);
+  border-radius:var(--radius);
+}
+.pending-card{
+  border:1.5px solid var(--line);
+  border-radius:var(--radius);
+  padding:14px 16px;
+  margin-bottom:10px;
+  background:var(--bg-alt);
+}
+.pending-card-head{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:10px;
+  margin-bottom:10px;
+}
+.pending-card-title{
+  font-family:var(--font-display);
+  font-weight:700;
+  font-size:13px;
+}
+.pending-card-time{
+  font-size:11px;
+  color:var(--ink-soft);
+}
+.pending-player-row{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  flex-wrap:wrap;
+  font-size:13px;
+  padding:6px 0;
+  border-top:1px dashed var(--line);
+}
+.pending-player-row:first-of-type{border-top:none;}
+.pending-player-row .p-tag{font-weight:700;}
+.pending-player-row .p-name{color:var(--ink-soft);}
+.pending-card-actions{
+  display:flex;
+  gap:8px;
+  margin-top:12px;
+}
+.btn-approve{
+  background:#1E7A32; color:#fff; border:none; border-radius:999px;
+  padding:8px 16px; font-size:12.5px; font-weight:700; cursor:pointer;
+}
+.btn-approve:hover{background:#175E27;}
+.btn-approve:disabled{opacity:0.5; cursor:not-allowed;}
+.btn-reject{
+  background:transparent; color:var(--red-dark); border:1.5px solid #F0B7BC; border-radius:999px;
+  padding:8px 16px; font-size:12.5px; font-weight:700; cursor:pointer;
+}
+.btn-reject:hover{background:var(--red-tint);}
+.btn-reject:disabled{opacity:0.5; cursor:not-allowed;}
+
 /* ---- custom tier picker (inline expanding panel) ---- */
 .tier-trigger{
   width:100%;

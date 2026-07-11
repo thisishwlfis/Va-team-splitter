@@ -18,6 +18,27 @@
 
     <main id="admin-main">
 
+      <!-- LOGIN PANEL -->
+      <section id="loginPanel" class="hidden">
+        <div class="screen-intro">
+          <h2>관리자 로그인</h2>
+          <p class="counter">비밀번호를 입력하세요. (참가자 등록 승인 권한이 있는 관리자만 접근하세요)</p>
+        </div>
+        <div class="admin-form">
+          <label>
+            <span>비밀번호</span>
+            <input type="password" id="loginPassword" placeholder="비밀번호 입력" />
+          </label>
+          <button class="btn btn-primary" id="btnLogin">로그인</button>
+        </div>
+        <div id="loginError" class="load-error hidden"></div>
+        <p class="hint-text" style="margin-top:14px;">
+          ⚠️ 이 비밀번호는 admin.js에 저장된 값과 비교하는 간단한 화면 잠금이며,
+          코드를 볼 수 있는 사람은 우회할 수 있는 <b>보조 장치</b>입니다.
+          실제 데이터 변경 권한은 여전히 이 브라우저에 저장된 GitHub 토큰이 담당합니다.
+        </p>
+      </section>
+
       <!-- SETUP PANEL (first time / reconfigure) -->
       <section id="setupPanel" class="hidden">
         <div class="screen-intro">
@@ -63,6 +84,17 @@
             <p class="counter" id="editorStatus">불러오는 중...</p>
           </div>
           <button class="mini-btn" id="btnReconfigure">저장소 설정 변경</button>
+        </div>
+
+        <div class="pending-section">
+          <div class="screen-intro" style="display:flex; justify-content:space-between; align-items:flex-end; gap:12px; flex-wrap:wrap; margin-bottom:12px;">
+            <div>
+              <h2 style="font-size:16px;">등록 신청 대기 목록</h2>
+              <p class="counter" id="pendingStatus">불러오는 중...</p>
+            </div>
+            <button class="mini-btn" id="btnRefreshPending">새로고침</button>
+          </div>
+          <div id="pendingList"></div>
         </div>
 
         <div class="admin-table-wrap">

@@ -86,9 +86,77 @@ const GitHubStore = {
 
   explainError(status, body){
     if(status === 401) return '토큰이 유효하지 않습니다.';
-    if(status === 403) return '권한이 없습니다. 토큰에 Contents 읽기/쓰기 권한이 있는지 확인하세요.';
+    if(status === 403) return '권한이 없습니다. 토큰에 Contents / Issues 읽기·쓰기 권한이 있는지 확인하세요.';
     if(status === 404) return '저장소 또는 경로를 찾을 수 없습니다. owner/repo/branch/path를 확인하세요.';
     if(status === 409) return '충돌이 발생했습니다. 새로고침 후 다시 시도해주세요.';
     return body.slice(0, 200);
+  },
+
+  /* ---------------- PENDING REGISTRATION REQUESTS (via GitHub Issues) ---------------- */
+
+  REG_LABEL: 'registration-pending',
+
+  issuesApiUrl(cfg, suffix){
+    return `https://api.github.com/repos/${cfg.owner}/${cfg.repo}/issues${suffix || ''}`;
+  },
+
+  parseRegBody(body){
+    if(!body) return null;
+    const m = body.match(/<!--\s*REG_DATA\s*([\s\S]*?)-->/);
+    if(!m) return null;
+    try{
+      const data = JSON.parse(m[1]);
+      return Array.isArray(data) ? data : null;
+    }catch(e){ return null; }
+  },
+
+  async fetchPendingRequests(cfg){
+    const url = this.issuesApiUrl(cfg, `?state=open&labels=${encodeURIComponent(this.REG_LABEL)}&per_page=100`);
+    const res = await fetch(url, {
+      headers:{
+        'Authorization': `token ${cfg.token}`,
+        'Accept': 'application/vnd.github+json'
+      }
+    });
+    if(!res.ok){
+      const body = await res.text();
+      throw new Error(`신청 목록 조회 실패 (${res.status}): ${this.explainError(res.status, body)}`);
+    }
+    const issues = await res.json();
+    return issues
+      .filter(i => !i.pull_request)
+      .map(i => ({
+        number: i.number,
+        title: i.title,
+        url: i.html_url,
+        createdAt: i.created_at,
+        players: this.parseRegBody(i.body) || []
+      }))
+      .filter(i => i.players.length > 0);
+  },
+
+  async closeIssue(cfg, number, comment){
+    const headers = {
+      'Authorization': `token ${cfg.token}`,
+      'Accept': 'application/vnd.github+json',
+      'Content-Type': 'application/json'
+    };
+    if(comment){
+      const cRes = await fetch(this.issuesApiUrl(cfg, `/${number}/comments`), {
+        method: 'POST', headers, body: JSON.stringify({ body: comment })
+      });
+      if(!cRes.ok){
+        const b = await cRes.text();
+        throw new Error(`코멘트 작성 실패 (${cRes.status}): ${this.explainError(cRes.status, b)}`);
+      }
+    }
+    const res = await fetch(this.issuesApiUrl(cfg, `/${number}`), {
+      method: 'PATCH', headers, body: JSON.stringify({ state: 'closed' })
+    });
+    if(!res.ok){
+      const b = await res.text();
+      throw new Error(`이슈 닫기 실패 (${res.status}): ${this.explainError(res.status, b)}`);
+    }
+    return await res.json();
   }
 };

@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>참가자 등록 신청 · MatchSplit</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <div class="app">
+
+    <header class="app-header">
+      <div class="logo-mark">⟡</div>
+      <h1>참가자 등록 신청</h1>
+      <a href="index.html" class="btn btn-ghost" style="text-decoration:none; padding:9px 18px; font-size:13px;">← 팀 나누기로</a>
+    </header>
+
+    <main id="register-main">
+
+      <section id="registerPanel">
+        <div class="screen-intro">
+          <h2>참가자 정보를 입력하세요</h2>
+          <p class="counter">신청 내용은 관리자 확인 후 승인되어야 실제 명단에 반영됩니다.</p>
+        </div>
+
+        <div class="admin-table-wrap">
+          <div class="admin-table-head">
+            <span>닉네임#태그</span>
+            <span>실명</span>
+            <span>최고티어</span>
+          </div>
+          <div id="playerRows"></div>
+        </div>
+
+        <div class="nav-row" style="margin-top:16px;">
+          <button class="btn btn-ghost" id="btnAddRow">+ 참가자 추가</button>
+          <button class="btn btn-primary" id="btnSubmit">신청하기</button>
+        </div>
+
+        <div id="submitMsg" class="load-error hidden"></div>
+
+        <p class="hint-text" style="margin-top:16px;">
+          "신청하기"를 누르면 GitHub의 새 이슈(Issue) 작성 화면이 새 탭으로 열립니다.
+          이슈 내용이 자동으로 채워져 있으니, 그 화면에서 <b>"Submit new issue"</b> 버튼만 눌러 완료해주세요.
+          신청 내용은 이슈로 등록되며, 관리자가 확인 후 승인하면 실제 참가자 명단에 반영됩니다.
+          (GitHub 이슈를 직접 남기는 방식이라 GitHub 계정 로그인이 필요합니다.)
+        </p>
+      </section>
+
+    </main>
+
+    <footer class="app-footer">등록 신청은 GitHub 이슈로 접수되어 관리자 승인 후 명단에 반영됩니다</footer>
+  </div>
+
+<script src="register.js"></script>
+</body>
+</html>
