@@ -547,6 +547,153 @@ main{flex:1;}
   padding:4px;
 }
 
+/* PNG EXPORT POSTER (오프스크린 캡처 전용, 사이트에는 표시되지 않음) */
+.png-poster{
+  width:1000px;
+  background:#fff;
+  padding:44px;
+  box-sizing:border-box;
+  font-family:var(--font-body);
+  color:var(--ink);
+}
+.png-header{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  padding-bottom:20px;
+  margin-bottom:32px;
+  border-bottom:2px solid var(--ink);
+}
+.png-logo{
+  font-family:var(--font-display);
+  font-size:24px;
+  font-weight:800;
+  letter-spacing:-0.02em;
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+.png-logo-mark{
+  width:30px;
+  height:30px;
+  border-radius:8px;
+  background:var(--red);
+  color:#fff;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  font-size:16px;
+}
+.png-date{
+  font-size:13px;
+  font-weight:700;
+  color:var(--ink-soft);
+  letter-spacing:0.03em;
+}
+.png-body{
+  display:grid;
+  grid-template-columns:0.85fr 1.1fr 0.85fr;
+  gap:20px;
+  align-items:start;
+}
+.png-team{
+  border-radius:16px;
+  padding:20px 18px;
+  background:var(--bg-alt);
+  border:1.5px solid var(--line);
+}
+.png-team-title{
+  font-family:var(--font-display);
+  font-weight:800;
+  font-size:15px;
+  letter-spacing:0.08em;
+  margin-bottom:10px;
+}
+.png-team-1 .png-team-title{color:var(--red-dark);}
+.png-team-2 .png-team-title{color:var(--ink);}
+.png-team-side{
+  display:inline-block;
+  font-family:var(--font-display);
+  font-weight:700;
+  font-size:12px;
+  padding:5px 12px;
+  border-radius:999px;
+  margin-bottom:16px;
+  background:#F0F0F2;
+  color:var(--ink-soft);
+}
+.png-team-side.attack{background:var(--red); color:#fff;}
+.png-team-side.defense{background:var(--ink); color:#fff;}
+.png-player-list{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+.png-player-item{
+  display:flex;
+  align-items:center;
+  gap:7px;
+  font-size:14px;
+  font-weight:700;
+  background:#fff;
+  border:1px solid var(--line);
+  border-radius:9px;
+  padding:9px 11px;
+}
+.png-player-cap{
+  font-size:10px;
+  font-weight:800;
+  background:var(--red);
+  color:#fff;
+  border-radius:4px;
+  padding:1px 5px;
+  line-height:1.4;
+}
+.png-maps{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+.png-map-card{
+  border-radius:14px;
+  padding:14px 18px;
+  color:#fff;
+  position:relative;
+  box-shadow:0 6px 14px rgba(20,20,25,0.18);
+}
+.png-map-set{
+  font-family:var(--font-display);
+  font-size:10px;
+  font-weight:800;
+  letter-spacing:0.14em;
+  opacity:0.85;
+}
+.png-map-name{
+  font-family:var(--font-display);
+  font-size:19px;
+  font-weight:800;
+  margin:3px 0 9px;
+  letter-spacing:-0.01em;
+}
+.png-map-source{
+  display:inline-block;
+  font-size:10px;
+  font-weight:800;
+  letter-spacing:0.03em;
+  padding:3px 10px;
+  border-radius:999px;
+  background:rgba(255,255,255,0.28);
+}
+.png-footer{
+  margin-top:32px;
+  text-align:center;
+  font-family:var(--font-display);
+  font-size:11px;
+  font-weight:700;
+  color:var(--ink-soft);
+  letter-spacing:0.1em;
+}
+
 .load-error{
   margin-top:24px;
   padding:16px;

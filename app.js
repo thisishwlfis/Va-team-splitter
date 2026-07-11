@@ -709,23 +709,106 @@ function renderResultLists(){
   });
 }
 
+const MAP_GRADIENTS = {
+  '스플릿': 'linear-gradient(135deg,#2C3E50,#4CA1AF)',
+  '바인드': 'linear-gradient(135deg,#C97B27,#7A4D14)',
+  '헤이븐': 'linear-gradient(135deg,#614385,#516395)',
+  '어센트': 'linear-gradient(135deg,#8E7B6E,#5C4B41)',
+  '아이스박스': 'linear-gradient(135deg,#2980B9,#6DD5FA)',
+  '브리즈': 'linear-gradient(135deg,#26A0DA,#2077B5)',
+  '프랙처': 'linear-gradient(135deg,#D9822B,#B25A1E)',
+  '펄': 'linear-gradient(135deg,#2948FF,#396AFC)',
+  '로터스': 'linear-gradient(135deg,#B4419A,#E8546A)',
+  '선셋': 'linear-gradient(135deg,#E4572E,#F2A365)',
+  '어비스': 'linear-gradient(135deg,#0F2027,#2C5364)',
+  '코로드': 'linear-gradient(135deg,#5C5346,#A78F65)',
+  '서밋': 'linear-gradient(135deg,#5B7B8C,#9CB4BF)'
+};
+
+function getMapGradient(map){
+  return MAP_GRADIENTS[map] || 'linear-gradient(135deg,#3A3A3F,#1E1E22)';
+}
+
+function nicknameOnly(tag){
+  return tag.split('#')[0];
+}
+
+function buildPngExportNode(){
+  const wrap = document.createElement('div');
+  wrap.id = 'pngExportRoot';
+  wrap.style.position = 'fixed';
+  wrap.style.left = '-99999px';
+  wrap.style.top = '0';
+
+  const t1Tags = state.selected.filter(t => state.teamOf[t] === 1);
+  const t2Tags = state.selected.filter(t => state.teamOf[t] === 2);
+
+  const sideLabel = (s) => s === 'attack' ? '선공' : (s === 'defense' ? '선수비' : '-');
+
+  const playerItemHtml = (tag) => {
+    const isCap = state.captains.includes(tag);
+    return `<div class="png-player-item">${isCap ? '<span class="png-player-cap">C</span>' : ''}<span>${escapeHtml(nicknameOnly(tag))}</span></div>`;
+  };
+
+  const mapCardsHtml = state.mapAssignments.map(item => `
+    <div class="png-map-card" style="background:${getMapGradient(item.map)}">
+      <div class="png-map-set">SET ${item.game}</div>
+      <div class="png-map-name">${escapeHtml(item.map)}</div>
+      <div class="png-map-source">${MAP_SOURCE_LABEL[item.source]}</div>
+    </div>
+  `).join('');
+
+  const dateStr = new Date().toLocaleDateString('ko-KR', { year:'numeric', month:'2-digit', day:'2-digit' });
+
+  wrap.innerHTML = `
+    <div class="png-poster">
+      <div class="png-header">
+        <div class="png-logo"><span class="png-logo-mark">⟡</span>MatchSplit</div>
+        <div class="png-date">${dateStr}</div>
+      </div>
+      <div class="png-body">
+        <div class="png-team png-team-1">
+          <div class="png-team-title">TEAM 1</div>
+          <div class="png-team-side ${state.side[1] || ''}">${sideLabel(state.side[1])}</div>
+          <div class="png-player-list">${t1Tags.map(playerItemHtml).join('')}</div>
+        </div>
+        <div class="png-maps">${mapCardsHtml}</div>
+        <div class="png-team png-team-2">
+          <div class="png-team-title">TEAM 2</div>
+          <div class="png-team-side ${state.side[2] || ''}">${sideLabel(state.side[2])}</div>
+          <div class="png-player-list">${t2Tags.map(playerItemHtml).join('')}</div>
+        </div>
+      </div>
+      <div class="png-footer">MATCHSPLIT · TEAM &amp; MAP RESULT</div>
+    </div>
+  `;
+
+  return wrap;
+}
+
 function savePng(){
-  const target = $('#finalResultCapture');
   const btn = $('#btnSavePng');
   const originalText = btn.textContent;
   btn.disabled = true;
   btn.textContent = '저장 중...';
 
-  html2canvas(target, { backgroundColor: '#ffffff', scale: 2 }).then(canvas => {
-    const link = document.createElement('a');
-    link.download = `matchsplit-result-${Date.now()}.png`;
-    link.href = canvas.toDataURL('image/png');
-    link.click();
-  }).catch(err => {
-    alert('PNG 저장에 실패했습니다: ' + err.message);
-  }).finally(() => {
-    btn.disabled = false;
-    btn.textContent = originalText;
+  const node = buildPngExportNode();
+  document.body.appendChild(node);
+
+  requestAnimationFrame(() => {
+    const target = node.querySelector('.png-poster');
+    html2canvas(target, { backgroundColor: '#ffffff', scale: 2 }).then(canvas => {
+      const link = document.createElement('a');
+      link.download = `matchsplit-result-${Date.now()}.png`;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    }).catch(err => {
+      alert('PNG 저장에 실패했습니다: ' + err.message);
+    }).finally(() => {
+      node.remove();
+      btn.disabled = false;
+      btn.textContent = originalText;
+    });
   });
 }
 
