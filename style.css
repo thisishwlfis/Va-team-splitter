@@ -243,7 +243,7 @@ main{flex:1;}
   font-size:13px;
   font-weight:600;
 }
-.tag-chip button{
+.tag-chip button.remove-btn{
   border:none;
   background:none;
   color:var(--ink-soft);
@@ -252,7 +252,7 @@ main{flex:1;}
   line-height:1;
   padding:2px 4px;
 }
-.tag-chip button:hover{color:var(--red);}
+.tag-chip button.remove-btn:hover{color:var(--red);}
 
 .unassigned-wrap{margin-bottom:20px;}
 .unassigned-label{
@@ -571,7 +571,7 @@ main{flex:1;}
   vertical-align: middle;
 }
 
-.player-name, .tag-chip, .unassigned-chip {
+.player-name, .chip-top span {
   display: flex;
   align-items: center;
 }
@@ -656,4 +656,74 @@ main{flex:1;}
   font-size: 12px;
   font-weight: 700;
   margin-left: 8px;
+}
+
+/* ---- SORT CONTROLS ---- */
+.sort-controls {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.sort-controls .mini-btn {
+  padding: 6px 12px;
+  font-size: 12px;
+}
+
+/* ---- GROUP & MULTI-ROW CHIP STYLES ---- */
+.unassigned-chip.has-group, .tag-chip.has-group {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 12px;
+}
+.chip-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  gap: 8px;
+}
+.team-btns {
+  display: flex;
+  gap: 4px;
+}
+.group-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: #F0F0F2;
+  padding: 4px 8px;
+  border-radius: 6px;
+}
+.group-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ink-soft);
+}
+.group-btn {
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  border: 1px solid #C9CACF;
+  background: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--ink-soft);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: all 0.15s;
+}
+.group-btn:hover {
+  border-color: var(--red);
+  color: var(--red);
+}
+.group-btn.active {
+  background: var(--red-tint);
+  border-color: var(--red);
+  color: var(--red-dark);
 }
