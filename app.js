@@ -6,9 +6,9 @@ const state = {
   players: [],        // {tag, name, tier}
   selected: [],        // array of tag strings (max 10)
   teamOf: {},           // tag -> 1 | 2 | null
-  groupOf: {},          // tag -> 1 | 2 | 3 | null (그룹 기능)
+  groupOf:          // tag -> 1 | 2 | 3 | null
   captains: [],         // array of tags (max 2)
-  side: {}              // 1 -> 'attack'|'defense', 2 -> ...
+  side: {}
 };
 
 const $ = (sel) => document.querySelector(sel);
@@ -23,7 +23,6 @@ function showScreen(n){
   });
 }
 
-/* ---------------- TIER BADGE FUNCTION ---------------- */
 function getTierBadgeHtml(tier) {
   if (!tier) return '';
   const TIER_COLORS = {
@@ -47,7 +46,6 @@ function getTierBadgeHtml(tier) {
 
 function getPlayerByTag(tag) { return state.players.find(p => p.tag === tag); }
 
-/* ---------------- LOAD DATA ---------------- */
 async function loadPlayers(){
   try{
     const res = await fetch(`data/players.json?t=${Date.now()}`);
@@ -59,7 +57,6 @@ async function loadPlayers(){
   }catch(err){ $('#loadError').classList.remove('hidden'); }
 }
 
-/* ---------------- SCREEN 1 : SELECT ---------------- */
 function renderPlayerGrid(){
   const grid = $('#playerGrid');
   if(!$('#searchContainer')){
@@ -100,7 +97,6 @@ function updateSelectUI(){
   $('#btn1-next').disabled = state.selected.length !== 10;
 }
 
-/* ---------------- SCREEN 2 : TEAM ASSIGN ---------------- */
 function enterScreen2(){
   state.teamOf = {}; state.groupOf = {}; state.captains = [];
   state.selected.forEach(tag => { state.teamOf[tag] = null; state.groupOf[tag] = null; });
@@ -191,10 +187,8 @@ function renderTeamScreen(){
   $('#teamCounter').textContent = `1팀 ${state.selected.filter(t=>state.teamOf[t]===1).length}명 · 2팀 ${state.selected.filter(t=>state.teamOf[t]===2).length}명`;
 }
 
-/* ---------------- NAV & UTIL ---------------- */
 function escapeHtml(str){ return str.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 $('#btn1-next').addEventListener('click', enterScreen2);
 $('#btn2-back').addEventListener('click', () => showScreen(1));
-$('#btn2-next').addEventListener('click', () => { /* enterScreen3 */ });
 $('#btn3-back').addEventListener('click', () => showScreen(2));
 loadPlayers();
