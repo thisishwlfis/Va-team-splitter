@@ -3,20 +3,25 @@
    users.xlsx 컬럼: 닉네임#태그 / 실명 / 최고티어
    ============================================================ */
 
+const MAPS = ['스플릿', '바인드', '헤이븐', '어센트', '아이스박스', '브리즈', '프랙처', '펄', '로터스', '선셋', '어비스', '코로드', '서밋'];
+
 const state = {
   players: [],        // {tag, name, tier}
   selected: [],        // array of tag strings (max 10)
   teamOf: {},           // tag -> 1 | 2 | null
   groupOf: {},          // tag -> 1 | 2 | 3 | null (그룹 기능)
   captains: [],         // array of tags (max 2)
-  side: {}              // 1 -> 'attack'|'defense', 2 -> ...
+  side: {},             // 1 -> 'attack'|'defense', 2 -> ...
+  bo: null,             // 3 | 5 | 7 | 9
+  teamMaps: { 1: [], 2: [] }, // tag -> selected maps per team
+  mapAssignments: []    // [{game, map, source: 'team1'|'team2'|'common'}]
 };
 
 const $ = (sel) => document.querySelector(sel);
 const $$ = (sel) => Array.from(document.querySelectorAll(sel));
 
 function showScreen(n){
-  [1,2,3].forEach(i=>{
+  [1,2,3,4].forEach(i=>{
     $(`#screen-${i}`).classList.toggle('hidden', i !== n);
   });
   $$('#stepTrack .step').forEach(s=>{
@@ -31,13 +36,13 @@ function getTierBadgeHtml(tier) {
   const TIER_COLORS = {
     Iron:      { bg: 'linear-gradient(135deg,#5B5E66,#34363B)', text: '#FFFFFF' },
     Bronze:    { bg: 'linear-gradient(135deg,#B27C4A,#7A4D26)', text: '#FFFFFF' },
-    Silver:    { bg: 'linear-gradient(135deg,#D7D9DD,#A6AAB1)', text: '#26272B' },
-    Gold:      { bg: 'linear-gradient(135deg,#F7D573,#DDAA2A)', text: '#3A2C00' },
+    Silver:    { bg: 'linear-gradient(135deg,#D7D9DD,#A6AAB1)', text: '#FFFFFF' },
+    Gold:      { bg: 'linear-gradient(135deg,#F7D573,#DDAA2A)', text: '#FFFFFF' },
     Platinum:  { bg: 'linear-gradient(135deg,#33D0C3,#0E8377)', text: '#FFFFFF' },
     Diamond:   { bg: 'linear-gradient(135deg,#C1A2FF,#7C4DFF)', text: '#FFFFFF' },
     Ascendant: { bg: 'linear-gradient(135deg,#42DA84,#0F8C48)', text: '#FFFFFF' },
     Immortal:  { bg: 'linear-gradient(135deg,#C13E7B,#6E1339)', text: '#FFFFFF' },
-    Radiant:   { bg: 'linear-gradient(135deg,#FFEBA8,#FFD65C)', text: '#5C4300' }
+    Radiant:   { bg: 'linear-gradient(135deg,#FFEBA8,#FFD65C)', text: '#FFFFFF' }
   };
   
   const parts = tier.split(' ');
@@ -53,7 +58,7 @@ function getTierBadgeHtml(tier) {
     abbr = rank.charAt(0) + num;
   }
   
-  const c = TIER_COLORS[rank] || { bg:'#E7E7EA', text:'#6B6D76' };
+  const c = TIER_COLORS[rank] || { bg:'#E7E7EA', text:'#FFFFFF' };
   
   return `<span class="tier-badge" style="background:${c.bg}; color:${c.text};">${abbr}</span>`;
 }
@@ -468,14 +473,170 @@ function countTeam(n){
   return state.selected.filter(tag => state.teamOf[tag] === n).length;
 }
 
-/* ---------------- SCREEN 3 : RESULT ---------------- */
+/* ---------------- SCREEN 3 : GAME SETUP ---------------- */
+const MAP_SOURCE_LABEL = { team1: 'TEAM 1', team2: 'TEAM 2', common: '공통' };
+
 function enterScreen3(){
-  renderResultLists();
-  $('#side1').textContent = '-';
-  $('#side1').className = 'side-badge';
-  $('#side2').textContent = '-';
-  $('#side2').className = 'side-badge';
+  state.bo = null;
+  state.teamMaps = { 1: [], 2: [] };
+  state.mapAssignments = [];
+  state.side = {};
+
+  $$('#boSelect .bo-btn').forEach(btn => btn.classList.remove('active'));
+  $('#mapPickerWrap').classList.add('hidden');
+  $('#mapResultWrap').classList.add('hidden');
+  $('#sideResultSetup').classList.add('hidden');
+  $('#sideResultSetup').innerHTML = '';
+  $('#btn3-next').disabled = true;
+
   showScreen(3);
+}
+
+function selectBo(bo){
+  state.bo = bo;
+  state.teamMaps = { 1: [], 2: [] };
+  state.mapAssignments = [];
+  state.side = {};
+
+  $$('#boSelect .bo-btn').forEach(btn => {
+    btn.classList.toggle('active', Number(btn.dataset.bo) === bo);
+  });
+
+  $('#t1PickCount').textContent = `0 / ${bo} 선택`;
+  $('#t2PickCount').textContent = `0 / ${bo} 선택`;
+  renderMapGrid(1);
+  renderMapGrid(2);
+
+  $('#mapPickerWrap').classList.remove('hidden');
+  $('#mapResultWrap').classList.add('hidden');
+  $('#sideResultSetup').classList.add('hidden');
+  $('#sideResultSetup').innerHTML = '';
+  $('#btnAssignMaps').disabled = true;
+  $('#btn3-next').disabled = true;
+}
+
+function renderMapGrid(teamNum){
+  const grid = $(teamNum === 1 ? '#t1MapGrid' : '#t2MapGrid');
+  grid.innerHTML = '';
+  MAPS.forEach(map => {
+    const picked = state.teamMaps[teamNum].includes(map);
+    const atLimit = state.teamMaps[teamNum].length >= state.bo && !picked;
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = `map-chip ${picked ? 'active' : ''}`;
+    btn.textContent = map;
+    btn.disabled = atLimit;
+    btn.addEventListener('click', () => toggleMapPick(teamNum, map));
+    grid.appendChild(btn);
+  });
+}
+
+function toggleMapPick(teamNum, map){
+  const list = state.teamMaps[teamNum];
+  const idx = list.indexOf(map);
+  if(idx >= 0){
+    list.splice(idx, 1);
+  }else{
+    if(list.length >= state.bo) return;
+    list.push(map);
+  }
+  $(teamNum === 1 ? '#t1PickCount' : '#t2PickCount').textContent = `${list.length} / ${state.bo} 선택`;
+  renderMapGrid(teamNum);
+
+  const ready = state.teamMaps[1].length === state.bo && state.teamMaps[2].length === state.bo;
+  $('#btnAssignMaps').disabled = !ready;
+}
+
+function assignMaps(){
+  const bo = state.bo;
+  const t1 = state.teamMaps[1];
+  const t2 = state.teamMaps[2];
+
+  const pool = [];
+  const allMaps = Array.from(new Set([...t1, ...t2]));
+  allMaps.forEach(map => {
+    const inT1 = t1.includes(map);
+    const inT2 = t2.includes(map);
+    if(inT1 && inT2){
+      pool.push({ map, source: 'common' });
+      pool.push({ map, source: 'common' }); // 공통 맵은 두 배 가중치로 랜덤 풀에 포함
+    }else if(inT1){
+      pool.push({ map, source: 'team1' });
+    }else{
+      pool.push({ map, source: 'team2' });
+    }
+  });
+
+  // shuffle (Fisher-Yates)
+  for(let i = pool.length - 1; i > 0; i--){
+    const j = Math.floor(Math.random() * (i + 1));
+    [pool[i], pool[j]] = [pool[j], pool[i]];
+  }
+
+  const usedMaps = new Set();
+  const chosen = [];
+  for(const item of pool){
+    if(chosen.length >= bo) break;
+    if(usedMaps.has(item.map)) continue;
+    usedMaps.add(item.map);
+    chosen.push(item);
+  }
+
+  state.mapAssignments = chosen.map((item, idx) => ({ game: idx + 1, map: item.map, source: item.source }));
+  renderMapResults('#mapResultList');
+
+  $('#mapResultWrap').classList.remove('hidden');
+  $('#sideResultSetup').classList.add('hidden');
+  $('#sideResultSetup').innerHTML = '';
+  $('#btn3-next').disabled = true;
+}
+
+function renderMapResults(targetSel){
+  const box = $(targetSel);
+  box.innerHTML = '';
+  state.mapAssignments.forEach(item => {
+    const row = document.createElement('div');
+    row.className = 'map-result-item';
+    row.innerHTML = `
+      <span class="map-result-game">${item.game}세트</span>
+      <span class="map-result-name">${escapeHtml(item.map)}</span>
+      <span class="map-result-badge map-result-badge-${item.source}">${MAP_SOURCE_LABEL[item.source]}</span>
+    `;
+    box.appendChild(row);
+  });
+}
+
+function rollSideSetup(){
+  const team1First = Math.random() < 0.5;
+  state.side = {
+    1: team1First ? 'attack' : 'defense',
+    2: team1First ? 'defense' : 'attack'
+  };
+
+  const box = $('#sideResultSetup');
+  box.classList.remove('hidden');
+  box.innerHTML = `
+    <div class="side-result-item ${state.side[1]}">TEAM 1 · ${state.side[1] === 'attack' ? '선공' : '선수비'}</div>
+    <div class="side-result-item ${state.side[2]}">TEAM 2 · ${state.side[2] === 'attack' ? '선공' : '선수비'}</div>
+  `;
+
+  $('#btn3-next').disabled = false;
+}
+
+/* ---------------- SCREEN 4 : RESULT ---------------- */
+function enterScreen4(){
+  renderResultLists();
+
+  const s1 = $('#side1');
+  const s2 = $('#side2');
+  s1.textContent = state.side[1] === 'attack' ? '선공' : (state.side[1] === 'defense' ? '선수비' : '-');
+  s2.textContent = state.side[2] === 'attack' ? '선공' : (state.side[2] === 'defense' ? '선수비' : '-');
+  s1.className = 'side-badge' + (state.side[1] ? ' ' + state.side[1] : '');
+  s2.className = 'side-badge' + (state.side[2] ? ' ' + state.side[2] : '');
+
+  renderMapResults('#finalMapResultList');
+
+  showScreen(4);
 }
 
 function renderResultLists(){
@@ -495,14 +656,24 @@ function renderResultLists(){
   });
 }
 
-function rollSides(){
-  const team1First = Math.random() < 0.5;
-  const s1 = $('#side1');
-  const s2 = $('#side2');
-  s1.textContent = team1First ? '선공' : '선수비';
-  s2.textContent = team1First ? '선수비' : '선공';
-  s1.className = 'side-badge ' + (team1First ? 'attack' : 'defense');
-  s2.className = 'side-badge ' + (team1First ? 'defense' : 'attack');
+function savePng(){
+  const target = $('#finalResultCapture');
+  const btn = $('#btnSavePng');
+  const originalText = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = '저장 중...';
+
+  html2canvas(target, { backgroundColor: '#ffffff', scale: 2 }).then(canvas => {
+    const link = document.createElement('a');
+    link.download = `matchsplit-result-${Date.now()}.png`;
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+  }).catch(err => {
+    alert('PNG 저장에 실패했습니다: ' + err.message);
+  }).finally(() => {
+    btn.disabled = false;
+    btn.textContent = originalText;
+  });
 }
 
 /* ---------------- UTIL ---------------- */
@@ -517,7 +688,14 @@ $('#btn1-next').addEventListener('click', enterScreen2);
 $('#btn2-back').addEventListener('click', () => showScreen(1));
 $('#btn2-next').addEventListener('click', enterScreen3);
 $('#btn3-back').addEventListener('click', () => showScreen(2));
-$('#btn3-roll').addEventListener('click', rollSides);
+$('#btn3-next').addEventListener('click', enterScreen4);
+$('#btn4-back').addEventListener('click', () => showScreen(3));
+$('#btnAssignMaps').addEventListener('click', assignMaps);
+$('#btnRollSideSetup').addEventListener('click', rollSideSetup);
+$('#btnSavePng').addEventListener('click', savePng);
+$$('#boSelect .bo-btn').forEach(btn => {
+  btn.addEventListener('click', () => selectBo(Number(btn.dataset.bo)));
+});
 
 /* ---------------- INIT ---------------- */
 loadPlayers();

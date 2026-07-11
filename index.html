@@ -16,7 +16,8 @@
       <div class="step-track" id="stepTrack">
         <span class="step active" data-step="1">01 선택</span>
         <span class="step" data-step="2">02 팀배정</span>
-        <span class="step" data-step="3">03 결과</span>
+        <span class="step" data-step="3">03 게임설정</span>
+        <span class="step" data-step="4">04 결과</span>
       </div>
       <a href="admin.html" class="mini-btn" style="text-decoration:none;">참가자 관리</a>
     </header>
@@ -47,11 +48,11 @@
 
         <div class="team-columns">
           <div class="team-col">
-            <div class="team-title team-1">1 TEAM</div>
+            <div class="team-title team-1">TEAM 1</div>
             <div id="team1List" class="team-list"></div>
           </div>
           <div class="team-col">
-            <div class="team-title team-2">2 TEAM</div>
+            <div class="team-title team-2">TEAM 2</div>
             <div id="team2List" class="team-list"></div>
           </div>
         </div>
@@ -67,29 +68,79 @@
         </div>
       </section>
 
-      <!-- SCREEN 3: RESULT -->
+      <!-- SCREEN 3: GAME SETUP -->
       <section id="screen-3" class="screen hidden">
         <div class="screen-intro">
-          <h2>선공 / 선수비 배정</h2>
-          <p class="counter">버튼을 눌러 무작위로 배정하세요</p>
+          <h2>게임 설정</h2>
+          <p class="counter">몇 판을 진행할지 선택하고, 팀별로 사용할 맵을 고르세요</p>
         </div>
 
-        <div class="result-columns" id="resultColumns">
-          <div class="result-col">
-            <div class="team-title team-1">1 TEAM</div>
-            <div class="side-badge" id="side1">-</div>
-            <div id="resultTeam1" class="team-list"></div>
+        <div class="bo-select" id="boSelect">
+          <button type="button" class="bo-btn" data-bo="3">BO3</button>
+          <button type="button" class="bo-btn" data-bo="5">BO5</button>
+          <button type="button" class="bo-btn" data-bo="7">BO7</button>
+          <button type="button" class="bo-btn" data-bo="9">BO9</button>
+        </div>
+
+        <div id="mapPickerWrap" class="map-picker-wrap hidden">
+          <div class="map-picker-columns">
+            <div class="map-picker-col">
+              <div class="team-title team-1">TEAM 1</div>
+              <p class="map-pick-count" id="t1PickCount">0 / 3 선택</p>
+              <div class="map-grid" id="t1MapGrid"></div>
+            </div>
+            <div class="map-picker-col">
+              <div class="team-title team-2">TEAM 2</div>
+              <p class="map-pick-count" id="t2PickCount">0 / 3 선택</p>
+              <div class="map-grid" id="t2MapGrid"></div>
+            </div>
           </div>
-          <div class="result-col">
-            <div class="team-title team-2">2 TEAM</div>
-            <div class="side-badge" id="side2">-</div>
-            <div id="resultTeam2" class="team-list"></div>
+          <div class="nav-row">
+            <button type="button" class="btn btn-primary" id="btnAssignMaps" disabled>맵 배정</button>
           </div>
+        </div>
+
+        <div id="mapResultWrap" class="map-result-wrap hidden">
+          <div class="map-result-list" id="mapResultList"></div>
+          <div class="nav-row">
+            <button type="button" class="btn btn-primary" id="btnRollSideSetup">공/수 랜덤 배정</button>
+          </div>
+          <div id="sideResultSetup" class="side-result-setup hidden"></div>
         </div>
 
         <div class="nav-row">
           <button class="btn btn-ghost" id="btn3-back">이전</button>
-          <button class="btn btn-primary" id="btn3-roll">랜덤 배정</button>
+          <button class="btn btn-primary" id="btn3-next" disabled>다음</button>
+        </div>
+      </section>
+
+      <!-- SCREEN 4: RESULT -->
+      <section id="screen-4" class="screen hidden">
+        <div class="screen-intro">
+          <h2>최종 결과</h2>
+          <p class="counter">아래 결과를 PNG로 저장할 수 있습니다</p>
+        </div>
+
+        <div id="finalResultCapture" class="final-result-capture">
+          <div class="result-columns" id="resultColumns">
+            <div class="result-col">
+              <div class="team-title team-1">TEAM 1</div>
+              <div class="side-badge" id="side1">-</div>
+              <div id="resultTeam1" class="team-list"></div>
+            </div>
+            <div class="result-col">
+              <div class="team-title team-2">TEAM 2</div>
+              <div class="side-badge" id="side2">-</div>
+              <div id="resultTeam2" class="team-list"></div>
+            </div>
+          </div>
+
+          <div class="map-result-list" id="finalMapResultList"></div>
+        </div>
+
+        <div class="nav-row">
+          <button class="btn btn-ghost" id="btn4-back">이전</button>
+          <button class="btn btn-primary" id="btnSavePng">PNG로 저장</button>
         </div>
       </section>
 
@@ -100,6 +151,7 @@
     <footer class="app-footer">data/players.json 데이터를 기반으로 생성됨 · <a href="admin.html">참가자 관리에서 편집</a></footer>
   </div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="app.js"></script>
 </body>
 </html>
