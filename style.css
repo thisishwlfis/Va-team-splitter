@@ -461,15 +461,13 @@ main{flex:1;}
 .tier-trigger:active{transform:scale(0.97);}
 
 .tier-panel{
-  position:absolute;
-  z-index:20;
-  top:calc(100% + 6px);
-  left:0;
+  position:fixed;
+  z-index:1000;
   min-width:230px;
   background:#fff;
   border:1.5px solid var(--line);
   border-radius:12px;
-  box-shadow:0 10px 30px rgba(20,20,25,0.12);
+  box-shadow:0 10px 30px rgba(20,20,25,0.16);
   padding:10px;
   display:flex;
   flex-direction:column;

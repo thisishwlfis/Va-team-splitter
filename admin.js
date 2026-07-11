@@ -138,6 +138,15 @@ function buildTierPickerHtml(idx, currentValue){
     ? `background:${c.bg}; color:${c.text};`
     : `background:#F0F0F2; color:#9A9BA3; border:1.5px dashed #D8D9DE;`;
 
+  return `
+    <div class="tier-picker" data-idx="${idx}">
+      <button type="button" class="tier-trigger" data-idx="${idx}" style="${triggerStyle}">${escapeHtml(triggerLabel)}</button>
+    </div>`;
+}
+
+function buildTierPanelHtml(idx, currentValue){
+  const { rank, num } = parseTier(currentValue);
+
   const groupsHtml = TIER_RANKS.map(r => {
     const rc = tierColor(r);
     const numsHtml = [1,2,3].map(n => {
@@ -158,45 +167,84 @@ function buildTierPickerHtml(idx, currentValue){
       <button type="button" class="tier-chip tier-chip-btn ${radiantActive ? 'active' : ''}" style="background:${rc.bg}; color:${rc.text};" data-idx="${idx}" data-rank="Radiant" data-num="">Radiant</button>
     </div>`;
 
-  return `
-    <div class="tier-picker" data-idx="${idx}">
-      <button type="button" class="tier-trigger" data-idx="${idx}" style="${triggerStyle}">${escapeHtml(triggerLabel)}</button>
-      <div class="tier-panel hidden" data-idx="${idx}">
-        ${groupsHtml}
-        ${radiantHtml}
-      </div>
-    </div>`;
+  return `<div class="tier-panel" data-idx="${idx}">${groupsHtml}${radiantHtml}</div>`;
+}
+
+let openTierPanel = null;
+
+function closeTierPanel(){
+  if(openTierPanel){
+    openTierPanel.remove();
+    openTierPanel = null;
+  }
+  window.removeEventListener('scroll', repositionOpenPanel, true);
+  window.removeEventListener('resize', repositionOpenPanel);
+}
+
+function repositionOpenPanel(){
+  if(!openTierPanel) return;
+  const idx = openTierPanel.dataset.idx;
+  const trigger = document.querySelector(`.tier-trigger[data-idx="${idx}"]`);
+  if(!trigger){ closeTierPanel(); return; }
+  positionPanel(trigger, openTierPanel);
+}
+
+function positionPanel(trigger, panel){
+  const rect = trigger.getBoundingClientRect();
+  const panelWidth = panel.offsetWidth || 230;
+  let left = rect.left;
+  if(left + panelWidth > window.innerWidth - 12){
+    left = Math.max(12, window.innerWidth - panelWidth - 12);
+  }
+  panel.style.left = `${left}px`;
+  panel.style.top = `${rect.bottom + 6}px`;
+}
+
+function openTierPanelFor(trigger){
+  const idx = Number(trigger.dataset.idx);
+  const wasOpenForSameIdx = openTierPanel && openTierPanel.dataset.idx === String(idx);
+  closeTierPanel();
+  if(wasOpenForSameIdx) return;
+
+  const panel = document.createElement('div');
+  panel.innerHTML = buildTierPanelHtml(idx, players[idx].tier);
+  const panelEl = panel.firstElementChild;
+  panelEl.style.position = 'fixed';
+  document.body.appendChild(panelEl);
+  openTierPanel = panelEl;
+
+  positionPanel(trigger, panelEl);
+
+  panelEl.querySelectorAll('.tier-num-btn, .tier-chip-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const i = Number(btn.dataset.idx);
+      const rank = btn.dataset.rank;
+      const num = btn.dataset.num;
+      players[i].tier = rank === 'Radiant' ? 'Radiant' : `${rank} ${num}`;
+      closeTierPanel();
+      renderRows();
+    });
+  });
+
+  window.addEventListener('scroll', repositionOpenPanel, true);
+  window.addEventListener('resize', repositionOpenPanel);
 }
 
 function wireTierPickers(wrap){
   wrap.querySelectorAll('.tier-trigger').forEach(btn => {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
-      const idx = btn.dataset.idx;
-      const panel = wrap.querySelector(`.tier-panel[data-idx="${idx}"]`);
-      const wasOpen = !panel.classList.contains('hidden');
-      closeAllTierPanels(wrap);
-      if(!wasOpen) panel.classList.remove('hidden');
-    });
-  });
-
-  wrap.querySelectorAll('.tier-num-btn, .tier-chip-btn').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      const idx = Number(btn.dataset.idx);
-      const rank = btn.dataset.rank;
-      const num = btn.dataset.num;
-      players[idx].tier = rank === 'Radiant' ? 'Radiant' : `${rank} ${num}`;
-      renderRows();
+      openTierPanelFor(btn);
     });
   });
 }
 
-function closeAllTierPanels(scope){
-  (scope || document).querySelectorAll('.tier-panel').forEach(p => p.classList.add('hidden'));
-}
-
-document.addEventListener('click', () => closeAllTierPanels(document));
+document.addEventListener('click', (e) => {
+  if(openTierPanel && !openTierPanel.contains(e.target)){
+    closeTierPanel();
+  }
+});
 
 $('#btnAddRow').addEventListener('click', () => {
   players.push({ tag:'', name:'', tier:'' });
