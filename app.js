@@ -7,6 +7,7 @@ const state = {
   players: [],        // {tag, name, tier}
   selected: [],        // array of tag strings (max 10)
   teamOf: {},           // tag -> 1 | 2 | null
+  groupOf: {},          // tag -> 1 | 2 | 3 | null (그룹 기능)
   side: {}              // 1 -> 'attack'|'defense', 2 -> ...
 };
 
@@ -205,9 +206,61 @@ function updateSelectUI(){
 /* ---------------- SCREEN 2 : TEAM ASSIGN ---------------- */
 function enterScreen2(){
   state.teamOf = {};
-  state.selected.forEach(tag => state.teamOf[tag] = null);
+  state.groupOf = {};
+  state.selected.forEach(tag => {
+    state.teamOf[tag] = null;
+    state.groupOf[tag] = null;
+  });
   renderTeamScreen();
   showScreen(2);
+}
+
+function getTierScore(tier) {
+  if (!tier) return 0;
+  const rankScores = { 'Iron':10, 'Bronze':20, 'Silver':30, 'Gold':40, 'Platinum':50, 'Diamond':60, 'Ascendant':70, 'Immortal':80, 'Radiant':90 };
+  const parts = tier.split(' ');
+  const rank = parts[0];
+  const num = parseInt(parts[1]) || 0;
+  return (rankScores[rank] || 0) + num;
+}
+
+function sortSelected(asc = false) {
+  state.selected.sort((a, b) => {
+    const pA = getPlayerByTag(a);
+    const pB = getPlayerByTag(b);
+    const sA = getTierScore(pA.tier);
+    const sB = getTierScore(pB.tier);
+    return asc ? sA - sB : sB - sA;
+  });
+  renderTeamScreen();
+}
+
+function assignTeam(tag, teamNum) {
+  const group = state.groupOf[tag];
+  if (group) {
+    state.selected.forEach(t => {
+      if (state.groupOf[t] === group) {
+        state.teamOf[t] = teamNum;
+      }
+    });
+  } else {
+    state.teamOf[tag] = teamNum;
+  }
+  renderTeamScreen();
+}
+
+function wireGroupButtons(chip, tag) {
+  chip.querySelectorAll('.group-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const g = Number(btn.dataset.group);
+      if (state.groupOf[tag] === g) {
+        state.groupOf[tag] = null; // Toggle off
+      } else {
+        state.groupOf[tag] = g;
+      }
+      renderTeamScreen();
+    });
+  });
 }
 
 function renderTeamScreen(){
@@ -218,35 +271,74 @@ function renderTeamScreen(){
   team2List.innerHTML = '';
   unassigned.innerHTML = '';
 
+  // Add Sort Controls if they don't exist
+  if(!$('#sortControls')) {
+    const sortControls = document.createElement('div');
+    sortControls.id = 'sortControls';
+    sortControls.className = 'sort-controls';
+    sortControls.innerHTML = `
+      <button class="mini-btn" id="btnSortDesc">티어 내림차순</button>
+      <button class="mini-btn" id="btnSortAsc">티어 올림차순</button>
+    `;
+    $('#unassignedList').parentNode.insertBefore(sortControls, $('#unassignedList'));
+
+    $('#btnSortDesc').addEventListener('click', () => sortSelected(false));
+    $('#btnSortAsc').addEventListener('click', () => sortSelected(true));
+  }
+
   state.selected.forEach(tag=>{
     const teamNum = state.teamOf[tag];
     const player = getPlayerByTag(tag);
+    const groupNum = state.groupOf[tag];
+    
+    const groupHtml = `
+      <div class="group-controls">
+        <span class="group-label">그룹</span>
+        <button class="group-btn ${groupNum === 1 ? 'active' : ''}" data-group="1">1</button>
+        <button class="group-btn ${groupNum === 2 ? 'active' : ''}" data-group="2">2</button>
+        <button class="group-btn ${groupNum === 3 ? 'active' : ''}" data-group="3">3</button>
+      </div>
+    `;
 
     if(teamNum === 1 || teamNum === 2){
       const chip = document.createElement('div');
-      chip.className = 'tag-chip';
-      chip.innerHTML = `<span>${escapeHtml(tag)} ${getTierBadgeHtml(player.tier)}</span><button aria-label="제거">X</button>`;
-      chip.querySelector('button').addEventListener('click', ()=>{
-        state.teamOf[tag] = null;
-        renderTeamScreen();
+      chip.className = 'tag-chip has-group';
+      chip.innerHTML = `
+        <div class="chip-top">
+          <span>${escapeHtml(tag)} ${getTierBadgeHtml(player.tier)}</span>
+          <button class="remove-btn" aria-label="제거">✕</button>
+        </div>
+        ${groupHtml}
+      `;
+      chip.querySelector('.remove-btn').addEventListener('click', ()=>{
+        assignTeam(tag, null);
       });
+      wireGroupButtons(chip, tag);
       (teamNum === 1 ? team1List : team2List).appendChild(chip);
     }else{
       const chip = document.createElement('div');
-      chip.className = 'unassigned-chip';
-      const t1full = countTeam(1) >= 5;
-      const t2full = countTeam(2) >= 5;
+      chip.className = 'unassigned-chip has-group';
+      
+      const groupSize = groupNum ? state.selected.filter(t => state.groupOf[t] === groupNum).length : 1;
+      const t1full = countTeam(1) + groupSize > 5;
+      const t2full = countTeam(2) + groupSize > 5;
+
       chip.innerHTML = `
-        <span>${escapeHtml(tag)} ${getTierBadgeHtml(player.tier)}</span>
-        <button class="mini-btn" data-team="1" ${t1full ? 'disabled' : ''}>1팀</button>
-        <button class="mini-btn" data-team="2" ${t2full ? 'disabled' : ''}>2팀</button>
+        <div class="chip-top">
+          <span>${escapeHtml(tag)} ${getTierBadgeHtml(player.tier)}</span>
+          <div class="team-btns">
+            <button class="mini-btn team-btn" data-team="1" ${t1full ? 'disabled' : ''}>1팀</button>
+            <button class="mini-btn team-btn" data-team="2" ${t2full ? 'disabled' : ''}>2팀</button>
+          </div>
+        </div>
+        ${groupHtml}
       `;
-      chip.querySelectorAll('button').forEach(btn=>{
+      chip.querySelectorAll('.team-btn').forEach(btn=>{
         btn.addEventListener('click', ()=>{
-          state.teamOf[tag] = Number(btn.dataset.team);
-          renderTeamScreen();
+          assignTeam(tag, Number(btn.dataset.team));
         });
       });
+      wireGroupButtons(chip, tag);
       unassigned.appendChild(chip);
     }
   });
