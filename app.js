@@ -108,15 +108,15 @@ function renderPlayerGrid(){
     const searchDropdown = $('#searchDropdown');
 
     searchInput.addEventListener('input', (e) => {
-      const query = e.target.value.trim().toLowerCase().replace(/\s+/g, '');
+      const query = e.target.value.trim().toLowerCase().replace(/\\s+/g, '');
       if(!query){
         searchDropdown.classList.add('hidden');
         return;
       }
 
       const matches = state.players.filter(p => {
-        const tagNoSpace = String(p.tag).toLowerCase().replace(/\s+/g, '');
-        const nameNoSpace = String(p.name || '').toLowerCase().replace(/\s+/g, '');
+        const tagNoSpace = String(p.tag).toLowerCase().replace(/\\s+/g, '');
+        const nameNoSpace = String(p.name || '').toLowerCase().replace(/\\s+/g, '');
         
         const matchTag = tagNoSpace.includes(query);
         const matchNameExact = nameNoSpace === query;
@@ -231,6 +231,20 @@ function getTierScoreExact(tier) {
   return (idx * 3) + num;
 }
 
+function getTierFromScore(score) {
+  if (score <= 0) return null;
+  let floored = Math.floor(score);
+  if (floored < 1) floored = 1; 
+  if (floored >= 25) return 'Radiant';
+
+  const ranks = ['Iron', 'Bronze', 'Silver', 'Gold', 'Platinum', 'Diamond', 'Ascendant', 'Immortal'];
+  const rankIdx = Math.floor((floored - 1) / 3);
+  const num = ((floored - 1) % 3) + 1;
+
+  if (rankIdx >= ranks.length) return 'Radiant';
+  return `${ranks[rankIdx]} ${num}`;
+}
+
 function sortSelected(asc = false) {
   state.selected.sort((a, b) => {
     const pA = getPlayerByTag(a);
@@ -243,7 +257,6 @@ function sortSelected(asc = false) {
 }
 
 function assignTeam(tag, teamNum) {
-  // 팀장이 팀을 이동할 때, 상대 팀장과 팀이 겹치면 상대 팀장을 스왑 (강제 분리)
   if (state.captains.includes(tag)) {
     state.teamOf[tag] = teamNum;
     if (teamNum !== null) {
@@ -253,7 +266,6 @@ function assignTeam(tag, teamNum) {
       }
     }
   } else {
-    // 그룹 로직 반영
     const group = state.groupOf[tag];
     if (group) {
       state.selected.forEach(t => {
@@ -275,7 +287,6 @@ function toggleCaptain(tag) {
     if (state.captains.length >= 2) return;
     state.captains.push(tag);
     
-    // 자동 배정 로직 (1번째 팀장은 1팀, 2번째 팀장은 무조건 반대팀)
     if (state.captains.length === 1) {
       assignTeam(tag, 1);
     } else if (state.captains.length === 2) {
@@ -317,13 +328,13 @@ function initTeamColumnsUI() {
     const avg1 = document.createElement('div');
     avg1.className = 'team-avg';
     avg1.id = 't1AvgBox';
-    avg1.textContent = '평균: 0.00';
+    avg1.textContent = '평균: -';
     col1.appendChild(avg1);
     
     const avg2 = document.createElement('div');
     avg2.className = 'team-avg';
     avg2.id = 't2AvgBox';
-    avg2.textContent = '평균: 0.00';
+    avg2.textContent = '평균: -';
     col2.appendChild(avg2);
   }
 }
@@ -336,21 +347,26 @@ function updateAveragesUI() {
   t1Tags.forEach(t => t1Sum += getTierScoreExact(getPlayerByTag(t).tier));
   t2Tags.forEach(t => t2Sum += getTierScoreExact(getPlayerByTag(t).tier));
   
-  const t1Avg = t1Tags.length ? t1Sum / t1Tags.length : 0;
-  const t2Avg = t2Tags.length ? t2Sum / t2Tags.length : 0;
+  const t1Avg = t1Sum / 5;
+  const t2Avg = t2Sum / 5;
   
-  $('#t1AvgBox').textContent = t1Tags.length ? `평균: ${t1Avg.toFixed(2)}` : '평균: 0.00';
-  $('#t2AvgBox').textContent = t2Tags.length ? `평균: ${t2Avg.toFixed(2)}` : '평균: 0.00';
+  const t1TierName = getTierFromScore(t1Avg);
+  const t2TierName = getTierFromScore(t2Avg);
+  
+  $('#t1AvgBox').innerHTML = t1TierName ? `평균: <span>${t1TierName}</span> ${getTierBadgeHtml(t1TierName)}` : '평균: -';
+  $('#t2AvgBox').innerHTML = t2TierName ? `평균: <span>${t2TierName}</span> ${getTierBadgeHtml(t2TierName)}` : '평균: -';
   
   const advBox = $('#advantageBox');
-  if (t1Tags.length > 0 || t2Tags.length > 0) {
-     const diff = Math.abs(t1Avg - t2Avg).toFixed(2);
+  if (t1Sum > 0 || t2Sum > 0) {
+     const diff = Math.abs(t1Avg - t2Avg);
+     const diffText = parseFloat(diff.toFixed(2)) + '티어 우세';
+     
      if (t1Avg > t2Avg) {
-        advBox.innerHTML = `TEAM 1<br><span class="diff">+${diff}</span>`;
+        advBox.innerHTML = `TEAM 1<br><span class="diff">${diffText}</span>`;
      } else if (t2Avg > t1Avg) {
-        advBox.innerHTML = `TEAM 2<br><span class="diff">+${diff}</span>`;
+        advBox.innerHTML = `TEAM 2<br><span class="diff">${diffText}</span>`;
      } else {
-        advBox.innerHTML = `동일<br><span class="diff">0.00</span>`;
+        advBox.innerHTML = `동일<br><span class="diff">차이 없음</span>`;
      }
   } else {
      advBox.innerHTML = `대기중`;
@@ -473,7 +489,7 @@ function renderResultLists(){
     const chip = document.createElement('div');
     chip.className = 'tag-chip';
     chip.style.justifyContent = 'flex-start';
-    chip.innerHTML = `<span>${isCap ? '👑 ' : ''}${escapeHtml(tag)} ${getTierBadgeHtml(player.tier)}</span>`;
+    chip.innerHTML = `<span>${isCap ? '[팀장] ' : ''}${escapeHtml(tag)} ${getTierBadgeHtml(player.tier)}</span>`;
     if(state.teamOf[tag] === 1) t1.appendChild(chip);
     if(state.teamOf[tag] === 2) t2.appendChild(chip);
   });
