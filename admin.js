@@ -12,7 +12,7 @@ const $$ = (sel) => Array.from(document.querySelectorAll(sel));
      crypto.subtle.digest('SHA-256', new TextEncoder().encode('원하는비밀번호'))
        .then(b => console.log(Array.from(new Uint8Array(b)).map(x=>x.toString(16).padStart(2,'0')).join('')))
    ============================================================ */
-const ADMIN_PASSWORD_HASH = 'REPLACE_WITH_YOUR_SHA256_HASH';
+const ADMIN_PASSWORD_HASH = 'adminade';
 const ADMIN_SESSION_KEY = 'teamsplit_admin_unlocked';
 
 async function sha256Hex(str){
