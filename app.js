@@ -217,7 +217,7 @@ function renderPlayerGrid(){
           <path d="M1 4.5L4 7.5L10 1.5" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
         </svg>
       </span>
-      <span class="player-name"><span class="player-tag-text">${escapeHtml(p.tag)}</span>${getTierBadgeHtml(p.tier)}${p.temp ? '<span class="temp-badge">임시</span>' : ''}</span>
+      <span class="player-name">${escapeHtml(p.tag)} ${getTierBadgeHtml(p.tier)}${p.temp ? '<span class="temp-badge">임시</span>' : ''}</span>
     `;
     card.addEventListener('click', () => toggleSelect(p.tag, card));
     grid.appendChild(card);
@@ -359,7 +359,7 @@ function wireControlButtons(chip, tag) {
 function initTeamColumnsUI() {
   if(!$('#advantageBox')) {
     const columnsWrap = document.querySelector('.team-columns');
-    columnsWrap.classList.add('team-columns-3col');
+    columnsWrap.style.gridTemplateColumns = '1fr auto 1fr';
     
     const col1 = columnsWrap.children[0];
     const col2 = columnsWrap.children[1];
@@ -463,7 +463,7 @@ function renderTeamScreen(){
       chip.className = 'tag-chip has-group';
       chip.innerHTML = `
         <div class="chip-top">
-          <span><span class="chip-name">${escapeHtml(tag)}</span>${getTierBadgeHtml(player.tier)}</span>
+          <span>${escapeHtml(tag)} ${getTierBadgeHtml(player.tier)}</span>
           <button class="remove-btn" aria-label="제거">✕</button>
         </div>
         ${controlsHtml}
@@ -483,7 +483,7 @@ function renderTeamScreen(){
 
       chip.innerHTML = `
         <div class="chip-top">
-          <span><span class="chip-name">${escapeHtml(tag)}</span>${getTierBadgeHtml(player.tier)}</span>
+          <span>${escapeHtml(tag)} ${getTierBadgeHtml(player.tier)}</span>
           <div class="team-btns">
             <button class="mini-btn team-btn" data-team="1" ${t1full ? 'disabled' : ''}>1팀</button>
             <button class="mini-btn team-btn" data-team="2" ${t2full ? 'disabled' : ''}>2팀</button>
@@ -989,7 +989,7 @@ function buildPngExportNode(){
   };
 
   const mapCardsHtml = state.mapAssignments.map(item => `
-    <div class="png-map-card" style="${buildMapCardBackground(item.map)}">
+    <div class="png-map-card" style="background:${getMapGradient(item.map)}">
       <div class="png-map-set">SET ${item.game}</div>
       <div class="png-map-name">${escapeHtml(item.map)}</div>
       <div class="png-map-source">${MAP_SOURCE_LABEL[item.source]}</div>
@@ -1005,7 +1005,7 @@ function buildPngExportNode(){
   wrap.innerHTML = `
     <div class="png-poster">
       <div class="png-header">
-        <div class="png-logo"><span class="png-logo-mark"><svg width="16" height="16" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M10 1L19 10L10 19L1 10Z" fill="#FFFFFF" fill-opacity="0.95"/><path d="M10 1L19 10L10 10Z" fill="#FFFFFF"/><path d="M1 10L10 10L10 19Z" fill="#FFFFFF" fill-opacity="0.5"/></svg></span>MatchSplit</div>
+        <div class="png-logo"><span class="png-logo-mark">⟡</span>MatchSplit</div>
         <div class="png-date">${dateStr}</div>
       </div>
       <div class="png-body">
