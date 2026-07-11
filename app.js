@@ -1,14 +1,15 @@
 /* ============================================================
    내전 팀 나누기 - app.js
+   users.xlsx 컬럼: 닉네임#태그 / 실명 / 최고티어
    ============================================================ */
 
 const state = {
   players: [],        // {tag, name, tier}
   selected: [],        // array of tag strings (max 10)
   teamOf: {},           // tag -> 1 | 2 | null
-  groupOf:          // tag -> 1 | 2 | 3 | null
+  groupOf: {},          // tag -> 1 | 2 | 3 | null (그룹 기능)
   captains: [],         // array of tags (max 2)
-  side: {}
+  side: {}              // 1 -> 'attack'|'defense', 2 -> ...
 };
 
 const $ = (sel) => document.querySelector(sel);
@@ -23,8 +24,10 @@ function showScreen(n){
   });
 }
 
+/* ---------------- TIER BADGE FUNCTION ---------------- */
 function getTierBadgeHtml(tier) {
   if (!tier) return '';
+  
   const TIER_COLORS = {
     Iron:      { bg: 'linear-gradient(135deg,#5B5E66,#34363B)', text: '#FFFFFF' },
     Bronze:    { bg: 'linear-gradient(135deg,#B27C4A,#7A4D26)', text: '#FFFFFF' },
@@ -36,71 +39,183 @@ function getTierBadgeHtml(tier) {
     Immortal:  { bg: 'linear-gradient(135deg,#C13E7B,#6E1339)', text: '#FFFFFF' },
     Radiant:   { bg: 'linear-gradient(135deg,#FFEBA8,#FFD65C)', text: '#5C4300' }
   };
+  
   const parts = tier.split(' ');
   const rank = parts[0];
   const num = parts[1] || '';
-  let abbr = (rank === 'Radiant') ? 'R' : (rank === 'Immortal' ? 'IM' + num : rank.charAt(0) + num);
+  
+  let abbr = '';
+  if (rank === 'Radiant') {
+    abbr = 'R';
+  } else if (rank === 'Immortal') {
+    abbr = 'IM' + num;
+  } else {
+    abbr = rank.charAt(0) + num;
+  }
+  
   const c = TIER_COLORS[rank] || { bg:'#E7E7EA', text:'#6B6D76' };
+  
   return `<span class="tier-badge" style="background:${c.bg}; color:${c.text};">${abbr}</span>`;
 }
 
-function getPlayerByTag(tag) { return state.players.find(p => p.tag === tag); }
+function getPlayerByTag(tag) {
+  return state.players.find(p => p.tag === tag);
+}
 
+/* ---------------- LOAD DATA ---------------- */
 async function loadPlayers(){
   try{
     const res = await fetch(`data/players.json?t=${Date.now()}`);
-    if(!res.ok) throw new Error('파일 로드 실패');
-    state.players = (await res.json()).filter(r => r.tag).map(r => ({
-      tag: String(r.tag).trim(), name: String(r.name || '').trim(), tier: String(r.tier || '').trim()
-    }));
+    if(!res.ok) throw new Error('data/players.json을 찾을 수 없습니다.');
+    const raw = await res.json();
+
+    state.players = raw
+      .filter(r => r.tag && String(r.tag).trim() !== '')
+      .map(r => ({
+        tag: String(r.tag).trim(),
+        name: String(r.name || '').trim(),
+        tier: String(r.tier || '').trim()
+      }));
+
+    if(state.players.length === 0){
+      throw new Error('참가자 데이터가 비어 있습니다. "참가자 관리" 페이지에서 추가해주세요.');
+    }
+
     renderPlayerGrid();
-  }catch(err){ $('#loadError').classList.remove('hidden'); }
+  }catch(err){
+    const box = $('#loadError');
+    box.classList.remove('hidden');
+    box.innerHTML = `<strong>데이터 로드 실패</strong><br>${err.message}<br><br>
+      <a href="admin.html">참가자 관리</a> 페이지에서 데이터를 확인하거나 새로 추가해주세요.`;
+  }
 }
 
+/* ---------------- SCREEN 1 : SELECT ---------------- */
 function renderPlayerGrid(){
   const grid = $('#playerGrid');
+
   if(!$('#searchContainer')){
     const searchWrap = document.createElement('div');
-    searchWrap.id = 'searchContainer'; searchWrap.className = 'search-container';
-    searchWrap.innerHTML = `<input type="text" id="playerSearch" placeholder="닉네임 또는 실명 검색..." /><div id="searchDropdown" class="search-dropdown hidden"></div>`;
+    searchWrap.id = 'searchContainer';
+    searchWrap.className = 'search-container';
+    searchWrap.innerHTML = `
+      <input type="text" id="playerSearch" placeholder="닉네임 또는 실명 검색..." autocomplete="off" />
+      <div id="searchDropdown" class="search-dropdown hidden"></div>
+    `;
     grid.parentNode.insertBefore(searchWrap, grid);
-    $('#playerSearch').addEventListener('input', (e) => {
-      const q = e.target.value.toLowerCase().replace(/\s+/g, '');
-      const d = $('#searchDropdown');
-      if(!q) { d.classList.add('hidden'); return; }
-      const matches = state.players.filter(p => String(p.tag).toLowerCase().replace(/\s+/g, '').includes(q) || (String(p.name||'').toLowerCase().replace(/\s+/g, '').includes(q) && q.length >= 2));
-      d.innerHTML = matches.map(p => `<div class="dropdown-item" data-tag="${escapeHtml(p.tag)}">${escapeHtml(p.tag)} ${getTierBadgeHtml(p.tier)}</div>`).join('');
-      d.classList.remove('hidden');
-      $$('.dropdown-item').forEach(item => item.addEventListener('click', () => { toggleSelect(item.dataset.tag); d.classList.add('hidden'); $('#playerSearch').value=''; }));
+
+    const searchInput = $('#playerSearch');
+    const searchDropdown = $('#searchDropdown');
+
+    searchInput.addEventListener('input', (e) => {
+      const query = e.target.value.trim().toLowerCase().replace(/\\s+/g, '');
+      if(!query){
+        searchDropdown.classList.add('hidden');
+        return;
+      }
+
+      const matches = state.players.filter(p => {
+        const tagNoSpace = String(p.tag).toLowerCase().replace(/\\s+/g, '');
+        const nameNoSpace = String(p.name || '').toLowerCase().replace(/\\s+/g, '');
+        
+        const matchTag = tagNoSpace.includes(query);
+        const matchNameExact = nameNoSpace === query;
+        const matchNamePartial = query.length >= 2 && nameNoSpace.includes(query);
+
+        return matchTag || matchNameExact || matchNamePartial;
+      });
+
+      if(matches.length === 0){
+        searchDropdown.innerHTML = '<div class="dropdown-empty">검색 결과가 없습니다.</div>';
+        searchDropdown.classList.remove('hidden');
+        return;
+      }
+
+      searchDropdown.innerHTML = matches.map(p => {
+        const isSelected = state.selected.includes(p.tag);
+        return `<div class="dropdown-item ${isSelected ? 'selected' : ''}" data-tag="${escapeHtml(p.tag)}">
+          <span class="dropdown-tag">${escapeHtml(p.tag)}</span>
+          ${p.name ? `<span class="dropdown-name">${escapeHtml(p.name)}</span>` : ''}
+          ${getTierBadgeHtml(p.tier)}
+          ${isSelected ? '<span class="dropdown-check">[선택됨]</span>' : ''}
+        </div>`;
+      }).join('');
+
+      searchDropdown.classList.remove('hidden');
+
+      $$('.dropdown-item').forEach(item => {
+        item.addEventListener('click', () => {
+          const tag = item.dataset.tag;
+          toggleSelect(tag);
+          
+          searchInput.value = '';
+          searchDropdown.classList.add('hidden');
+          searchInput.focus();
+        });
+      });
+    });
+
+    document.addEventListener('click', (e) => {
+      if(!searchWrap.contains(e.target)){
+        searchDropdown.classList.add('hidden');
+      }
     });
   }
+
   grid.innerHTML = '';
   state.players.forEach(p=>{
     const card = document.createElement('div');
-    card.className = 'player-card'; card.dataset.tag = p.tag;
-    card.innerHTML = `<span class="checkbox"></span><span class="player-name">${escapeHtml(p.tag)} ${getTierBadgeHtml(p.tier)}</span>`;
-    card.addEventListener('click', () => toggleSelect(p.tag));
+    card.className = 'player-card';
+    card.dataset.tag = p.tag;
+    card.innerHTML = `
+      <span class="checkbox">
+        <svg width="11" height="9" viewBox="0 0 11 9" fill="none">
+          <path d="M1 4.5L4 7.5L10 1.5" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </span>
+      <span class="player-name">${escapeHtml(p.tag)} ${getTierBadgeHtml(p.tier)}</span>
+    `;
+    card.addEventListener('click', () => toggleSelect(p.tag, card));
     grid.appendChild(card);
   });
   updateSelectUI();
 }
 
-function toggleSelect(tag){
+function toggleSelect(tag, cardEl){
   const idx = state.selected.indexOf(tag);
-  if(idx >= 0) state.selected.splice(idx, 1);
-  else if(state.selected.length < 10) state.selected.push(tag);
+  if(idx >= 0){
+    state.selected.splice(idx, 1);
+  }else{
+    if(state.selected.length >= 10) return;
+    state.selected.push(tag);
+  }
   updateSelectUI();
 }
 
 function updateSelectUI(){
-  $$('.player-card').forEach(card => card.classList.toggle('checked', state.selected.includes(card.dataset.tag)));
+  $$('.player-card').forEach(card=>{
+    const tag = card.dataset.tag;
+    const isChecked = state.selected.includes(tag);
+    card.classList.toggle('checked', isChecked);
+    const atLimit = state.selected.length >= 10 && !isChecked;
+    card.classList.toggle('disabled', atLimit);
+  });
+  $('#selectCount').textContent = `${state.selected.length} / 10 선택됨`;
   $('#btn1-next').disabled = state.selected.length !== 10;
 }
 
+/* ---------------- SCREEN 2 : TEAM ASSIGN ---------------- */
 function enterScreen2(){
-  state.teamOf = {}; state.groupOf = {}; state.captains = [];
-  state.selected.forEach(tag => { state.teamOf[tag] = null; state.groupOf[tag] = null; });
-  initTeamColumnsUI(); renderTeamScreen(); showScreen(2);
+  state.teamOf = {};
+  state.groupOf = {};
+  state.captains = [];
+  state.selected.forEach(tag => {
+    state.teamOf[tag] = null;
+    state.groupOf[tag] = null;
+  });
+  initTeamColumnsUI();
+  renderTeamScreen();
+  showScreen(2);
 }
 
 function getTierScoreExact(tier) {
@@ -109,86 +224,300 @@ function getTierScoreExact(tier) {
   const parts = tier.split(' ');
   const rank = parts[0];
   const num = parseInt(parts[1]) || 0;
-  return (rank === 'Radiant') ? 25 : (ranks.indexOf(rank) * 3) + num;
+  
+  if (rank === 'Radiant') return 25;
+  const idx = ranks.indexOf(rank);
+  if (idx === -1) return 0;
+  return (idx * 3) + num;
 }
 
 function getTierFromScore(score) {
-  let s = Math.floor(score);
-  if (s >= 25) return 'Radiant';
+  if (score <= 0) return null;
+  let floored = Math.floor(score);
+  if (floored < 1) floored = 1; 
+  if (floored >= 25) return 'Radiant';
+
   const ranks = ['Iron', 'Bronze', 'Silver', 'Gold', 'Platinum', 'Diamond', 'Ascendant', 'Immortal'];
-  const rankIdx = Math.floor((s - 1) / 3);
-  const num = ((s - 1) % 3) + 1;
-  return rankIdx >= 0 && rankIdx < ranks.length ? `${ranks[rankIdx]} ${num}` : null;
+  const rankIdx = Math.floor((floored - 1) / 3);
+  const num = ((floored - 1) % 3) + 1;
+
+  if (rankIdx >= ranks.length) return 'Radiant';
+  return `${ranks[rankIdx]} ${num}`;
+}
+
+function sortSelected(asc = false) {
+  state.selected.sort((a, b) => {
+    const pA = getPlayerByTag(a);
+    const pB = getPlayerByTag(b);
+    const sA = getTierScoreExact(pA.tier);
+    const sB = getTierScoreExact(pB.tier);
+    return asc ? sA - sB : sB - sA;
+  });
+  renderTeamScreen();
 }
 
 function assignTeam(tag, teamNum) {
   if (state.captains.includes(tag)) {
     state.teamOf[tag] = teamNum;
-    const otherCap = state.captains.find(c => c !== tag);
-    if (otherCap && state.teamOf[otherCap] === teamNum) state.teamOf[otherCap] = teamNum === 1 ? 2 : 1;
+    if (teamNum !== null) {
+      const otherCap = state.captains.find(c => c !== tag);
+      if (otherCap && state.teamOf[otherCap] === teamNum) {
+        state.teamOf[otherCap] = teamNum === 1 ? 2 : 1;
+      }
+    }
   } else {
     const group = state.groupOf[tag];
-    state.selected.forEach(t => { if (!group || state.groupOf[t] === group) state.teamOf[t] = teamNum; });
+    if (group) {
+      state.selected.forEach(t => {
+        if (state.groupOf[t] === group) {
+          state.teamOf[t] = teamNum;
+        }
+      });
+    } else {
+      state.teamOf[tag] = teamNum;
+    }
   }
   renderTeamScreen();
 }
 
 function toggleCaptain(tag) {
-  if (state.captains.includes(tag)) state.captains = state.captains.filter(t => t !== tag);
-  else if (state.captains.length < 2) {
+  if (state.captains.includes(tag)) {
+    state.captains = state.captains.filter(t => t !== tag);
+  } else {
+    if (state.captains.length >= 2) return;
     state.captains.push(tag);
-    assignTeam(tag, state.captains.length === 1 ? 1 : (state.teamOf[state.captains[0]] === 1 ? 2 : 1));
+    
+    if (state.captains.length === 1) {
+      assignTeam(tag, 1);
+    } else if (state.captains.length === 2) {
+      const firstCapTeam = state.teamOf[state.captains[0]] || 1;
+      const secondCapTeam = firstCapTeam === 1 ? 2 : 1;
+      assignTeam(tag, secondCapTeam);
+    }
   }
   renderTeamScreen();
 }
 
+function wireControlButtons(chip, tag) {
+  chip.querySelectorAll('.group-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const g = Number(btn.dataset.group);
+      state.groupOf[tag] = (state.groupOf[tag] === g) ? null : g;
+      renderTeamScreen();
+    });
+  });
+  
+  chip.querySelector('.cap-btn').addEventListener('click', () => {
+    toggleCaptain(tag);
+  });
+}
+
 function initTeamColumnsUI() {
   if(!$('#advantageBox')) {
-    const cw = $('.team-columns'); cw.style.gridTemplateColumns = '1fr auto 1fr';
-    const adv = document.createElement('div'); adv.className = 'adv-col';
-    adv.innerHTML = '<div class="adv-box" id="advantageBox">대기중</div>';
-    cw.insertBefore(adv, cw.children[1]);
-    cw.children[0].appendChild(Object.assign(document.createElement('div'),{className:'team-avg', id:'t1AvgBox', textContent:'평균 : -'}));
-    cw.children[2].appendChild(Object.assign(document.createElement('div'),{className:'team-avg', id:'t2AvgBox', textContent:'평균 : -'}));
+    const columnsWrap = document.querySelector('.team-columns');
+    columnsWrap.style.gridTemplateColumns = '1fr auto 1fr';
+    
+    const col1 = columnsWrap.children[0];
+    const col2 = columnsWrap.children[1];
+    
+    const advCol = document.createElement('div');
+    advCol.className = 'adv-col';
+    advCol.innerHTML = '<div class="adv-box" id="advantageBox">대기중</div>';
+    columnsWrap.insertBefore(advCol, col2);
+    
+    const avg1 = document.createElement('div');
+    avg1.className = 'team-avg';
+    avg1.id = 't1AvgBox';
+    avg1.textContent = '평균: -';
+    col1.appendChild(avg1);
+    
+    const avg2 = document.createElement('div');
+    avg2.className = 'team-avg';
+    avg2.id = 't2AvgBox';
+    avg2.textContent = '평균: -';
+    col2.appendChild(avg2);
   }
 }
 
 function updateAveragesUI() {
-  const t1s = state.selected.filter(t => state.teamOf[t] === 1);
-  const t2s = state.selected.filter(t => state.teamOf[t] === 2);
-  let s1 = t1s.reduce((a, t) => a + getTierScoreExact(getPlayerByTag(t).tier), 0);
-  let s2 = t2s.reduce((a, t) => a + getTierScoreExact(getPlayerByTag(t).tier), 0);
-  const avg1 = s1 / 5, avg2 = s2 / 5;
-  const n1 = getTierFromScore(avg1), n2 = getTierFromScore(avg2);
-  $('#t1AvgBox').innerHTML = n1 ? `평균 : <span class="avg-val">${n1}</span> ${getTierBadgeHtml(n1)}` : '평균 : -';
-  $('#t2AvgBox').innerHTML = n2 ? `평균 : <span class="avg-val">${n2}</span> ${getTierBadgeHtml(n2)}` : '평균 : -';
+  const t1Tags = state.selected.filter(t => state.teamOf[t] === 1);
+  const t2Tags = state.selected.filter(t => state.teamOf[t] === 2);
   
-  if (s1 > 0 || s2 > 0) {
-    const d = Math.abs(avg1 - avg2).toFixed(1);
-    $('#advantageBox').innerHTML = (avg1 > avg2) ? `TEAM 1<br><span class="diff">${d}티어 우세</span>` : (avg2 > avg1) ? `TEAM 2<br><span class="diff">${d}티어 우세</span>` : `동일<br><span class="diff">0.0티어</span>`;
+  let t1Sum = 0, t2Sum = 0;
+  t1Tags.forEach(t => t1Sum += getTierScoreExact(getPlayerByTag(t).tier));
+  t2Tags.forEach(t => t2Sum += getTierScoreExact(getPlayerByTag(t).tier));
+  
+  const t1Avg = t1Sum / 5;
+  const t2Avg = t2Sum / 5;
+  
+  const t1TierName = getTierFromScore(t1Avg);
+  const t2TierName = getTierFromScore(t2Avg);
+  
+  $('#t1AvgBox').innerHTML = t1TierName ? `평균: <span>${t1TierName}</span> ${getTierBadgeHtml(t1TierName)}` : '평균: -';
+  $('#t2AvgBox').innerHTML = t2TierName ? `평균: <span>${t2TierName}</span> ${getTierBadgeHtml(t2TierName)}` : '평균: -';
+  
+  const advBox = $('#advantageBox');
+  if (t1Sum > 0 || t2Sum > 0) {
+     const diff = Math.abs(t1Avg - t2Avg);
+     const diffText = parseFloat(diff.toFixed(2)) + '티어 우세';
+     
+     if (t1Avg > t2Avg) {
+        advBox.innerHTML = `TEAM 1<br><span class="diff">${diffText}</span>`;
+     } else if (t2Avg > t1Avg) {
+        advBox.innerHTML = `TEAM 2<br><span class="diff">${diffText}</span>`;
+     } else {
+        advBox.innerHTML = `동일<br><span class="diff">차이 없음</span>`;
+     }
+  } else {
+     advBox.innerHTML = `대기중`;
   }
 }
 
 function renderTeamScreen(){
-  const t1 = $('#team1List'), t2 = $('#team2List'), un = $('#unassignedList');
-  t1.innerHTML = ''; t2.innerHTML = ''; un.innerHTML = '';
+  const team1List = $('#team1List');
+  const team2List = $('#team2List');
+  const unassigned = $('#unassignedList');
+  team1List.innerHTML = '';
+  team2List.innerHTML = '';
+  unassigned.innerHTML = '';
+
+  if(!$('#sortControls')) {
+    const sortControls = document.createElement('div');
+    sortControls.id = 'sortControls';
+    sortControls.className = 'sort-controls';
+    sortControls.innerHTML = `
+      <button class="mini-btn" id="btnSortDesc">티어 내림차순</button>
+      <button class="mini-btn" id="btnSortAsc">티어 올림차순</button>
+    `;
+    $('#unassignedList').parentNode.insertBefore(sortControls, $('#unassignedList'));
+
+    $('#btnSortDesc').addEventListener('click', () => sortSelected(false));
+    $('#btnSortAsc').addEventListener('click', () => sortSelected(true));
+  }
+
   state.selected.forEach(tag=>{
-    const teamNum = state.teamOf[tag], p = getPlayerByTag(tag), g = state.groupOf[tag], isCap = state.captains.includes(tag);
-    const chip = document.createElement('div');
-    chip.className = (teamNum ? 'tag-chip' : 'unassigned-chip') + ' has-group';
-    chip.innerHTML = `<div class="chip-top"><span>${escapeHtml(tag)} ${getTierBadgeHtml(p.tier)}</span>${teamNum ? '<button class="remove-btn">✕</button>' : '<div class="team-btns"><button class="mini-btn team-btn" data-team="1">1팀</button><button class="mini-btn team-btn" data-team="2">2팀</button></div>'}</div><div class="chip-bottom"><div class="group-controls"><span class="group-label">그룹</span><button class="group-btn ${g===1?'active':''}" data-group="1">1</button><button class="group-btn ${g===2?'active':''}" data-group="2">2</button><button class="group-btn ${g===3?'active':''}" data-group="3">3</button></div><button class="cap-btn ${isCap?'active':''}">팀장</button></div>`;
-    if(teamNum) chip.querySelector('.remove-btn').addEventListener('click', () => assignTeam(tag, null));
-    else chip.querySelectorAll('.team-btn').forEach(btn => btn.addEventListener('click', () => assignTeam(tag, Number(btn.dataset.team))));
-    chip.querySelectorAll('.group-btn').forEach(btn => btn.addEventListener('click', () => { state.groupOf[tag] = (state.groupOf[tag] == btn.dataset.group) ? null : Number(btn.dataset.group); renderTeamScreen(); }));
-    chip.querySelector('.cap-btn').addEventListener('click', () => toggleCaptain(tag));
-    (teamNum === 1 ? t1 : (teamNum === 2 ? t2 : un)).appendChild(chip);
+    const teamNum = state.teamOf[tag];
+    const player = getPlayerByTag(tag);
+    const groupNum = state.groupOf[tag];
+    const isCap = state.captains.includes(tag);
+    const capDisabled = !isCap && state.captains.length >= 2 ? 'disabled' : '';
+    
+    const controlsHtml = `
+      <div class="chip-bottom">
+        <div class="group-controls">
+          <span class="group-label">그룹</span>
+          <button class="group-btn ${groupNum === 1 ? 'active' : ''}" data-group="1">1</button>
+          <button class="group-btn ${groupNum === 2 ? 'active' : ''}" data-group="2">2</button>
+          <button class="group-btn ${groupNum === 3 ? 'active' : ''}" data-group="3">3</button>
+        </div>
+        <button class="cap-btn ${isCap ? 'active' : ''}" data-tag="${tag}" ${capDisabled}>팀장</button>
+      </div>
+    `;
+
+    if(teamNum === 1 || teamNum === 2){
+      const chip = document.createElement('div');
+      chip.className = 'tag-chip has-group';
+      chip.innerHTML = `
+        <div class="chip-top">
+          <span>${escapeHtml(tag)} ${getTierBadgeHtml(player.tier)}</span>
+          <button class="remove-btn" aria-label="제거">✕</button>
+        </div>
+        ${controlsHtml}
+      `;
+      chip.querySelector('.remove-btn').addEventListener('click', ()=>{
+        assignTeam(tag, null);
+      });
+      wireControlButtons(chip, tag);
+      (teamNum === 1 ? team1List : team2List).appendChild(chip);
+    }else{
+      const chip = document.createElement('div');
+      chip.className = 'unassigned-chip has-group';
+      
+      const groupSize = groupNum ? state.selected.filter(t => state.groupOf[t] === groupNum).length : 1;
+      const t1full = countTeam(1) + groupSize > 5;
+      const t2full = countTeam(2) + groupSize > 5;
+
+      chip.innerHTML = `
+        <div class="chip-top">
+          <span>${escapeHtml(tag)} ${getTierBadgeHtml(player.tier)}</span>
+          <div class="team-btns">
+            <button class="mini-btn team-btn" data-team="1" ${t1full ? 'disabled' : ''}>1팀</button>
+            <button class="mini-btn team-btn" data-team="2" ${t2full ? 'disabled' : ''}>2팀</button>
+          </div>
+        </div>
+        ${controlsHtml}
+      `;
+      chip.querySelectorAll('.team-btn').forEach(btn=>{
+        btn.addEventListener('click', ()=>{
+          assignTeam(tag, Number(btn.dataset.team));
+        });
+      });
+      wireControlButtons(chip, tag);
+      unassigned.appendChild(chip);
+    }
   });
+
   updateAveragesUI();
-  $('#teamCounter').textContent = `1팀 ${state.selected.filter(t=>state.teamOf[t]===1).length}명 · 2팀 ${state.selected.filter(t=>state.teamOf[t]===2).length}명`;
+
+  const c1 = countTeam(1), c2 = countTeam(2);
+  $('#teamCounter').textContent = `1팀 ${c1}명 · 2팀 ${c2}명`;
+  $('#btn2-next').disabled = !(c1 === 5 && c2 === 5);
 }
 
-function escapeHtml(str){ return str.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function countTeam(n){
+  return state.selected.filter(tag => state.teamOf[tag] === n).length;
+}
+
+/* ---------------- SCREEN 3 : RESULT ---------------- */
+function enterScreen3(){
+  renderResultLists();
+  $('#side1').textContent = '-';
+  $('#side1').className = 'side-badge';
+  $('#side2').textContent = '-';
+  $('#side2').className = 'side-badge';
+  showScreen(3);
+}
+
+function renderResultLists(){
+  const t1 = $('#resultTeam1');
+  const t2 = $('#resultTeam2');
+  t1.innerHTML = '';
+  t2.innerHTML = '';
+  state.selected.forEach(tag=>{
+    const player = getPlayerByTag(tag);
+    const isCap = state.captains.includes(tag);
+    const chip = document.createElement('div');
+    chip.className = 'tag-chip';
+    chip.style.justifyContent = 'flex-start';
+    chip.innerHTML = `<span>${isCap ? '[팀장] ' : ''}${escapeHtml(tag)} ${getTierBadgeHtml(player.tier)}</span>`;
+    if(state.teamOf[tag] === 1) t1.appendChild(chip);
+    if(state.teamOf[tag] === 2) t2.appendChild(chip);
+  });
+}
+
+function rollSides(){
+  const team1First = Math.random() < 0.5;
+  const s1 = $('#side1');
+  const s2 = $('#side2');
+  s1.textContent = team1First ? '선공' : '선수비';
+  s2.textContent = team1First ? '선수비' : '선공';
+  s1.className = 'side-badge ' + (team1First ? 'attack' : 'defense');
+  s2.className = 'side-badge ' + (team1First ? 'defense' : 'attack');
+}
+
+/* ---------------- UTIL ---------------- */
+function escapeHtml(str){
+  return str.replace(/[&<>"']/g, c => ({
+    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+  }[c]));
+}
+
+/* ---------------- NAV WIRING ---------------- */
 $('#btn1-next').addEventListener('click', enterScreen2);
 $('#btn2-back').addEventListener('click', () => showScreen(1));
+$('#btn2-next').addEventListener('click', enterScreen3);
 $('#btn3-back').addEventListener('click', () => showScreen(2));
+$('#btn3-roll').addEventListener('click', rollSides);
+
+/* ---------------- INIT ---------------- */
 loadPlayers();
