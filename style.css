@@ -200,7 +200,7 @@ main{flex:1;}
 .btn-ghost:hover:not(:disabled){border-color:#C9CACF; color:var(--ink);}
 .btn-ghost:disabled{opacity:0.4; cursor:not-allowed;}
 
-/* TEAM ASSIGN SCREEN (MODIFIED FOR ADVANTAGE BOX) */
+/* TEAM ASSIGN SCREEN & AVG BOX */
 .team-columns{
   display:grid;
   grid-template-columns:1fr auto 1fr;
@@ -257,7 +257,8 @@ main{flex:1;}
 }
 .adv-box span.diff {
   color: var(--red);
-  font-size: 15px;
+  font-size: 13px;
+  white-space: nowrap;
 }
 .team-avg {
   margin-top: 12px;
@@ -267,7 +268,10 @@ main{flex:1;}
   font-weight: 700;
   font-size: 13px;
   color: var(--ink-soft);
-  text-align: center;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 6px;
 }
 
 .tag-chip{
