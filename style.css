@@ -200,12 +200,13 @@ main{flex:1;}
 .btn-ghost:hover:not(:disabled){border-color:#C9CACF; color:var(--ink);}
 .btn-ghost:disabled{opacity:0.4; cursor:not-allowed;}
 
-/* TEAM ASSIGN SCREEN */
+/* TEAM ASSIGN SCREEN (MODIFIED FOR ADVANTAGE BOX) */
 .team-columns{
   display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:16px;
+  grid-template-columns:1fr auto 1fr;
+  gap:12px;
   margin-bottom:18px;
+  align-items: stretch;
 }
 @media (max-width:640px){
   .team-columns{grid-template-columns:1fr;}
@@ -216,6 +217,8 @@ main{flex:1;}
   padding:16px;
   min-height:170px;
   background:var(--bg-alt);
+  display: flex;
+  flex-direction: column;
 }
 .team-title{
   font-family:var(--font-display);
@@ -226,10 +229,46 @@ main{flex:1;}
   display:inline-block;
   padding:4px 10px;
   border-radius:6px;
+  align-self: flex-start;
 }
 .team-title.team-1{background:var(--red-tint); color:var(--red-dark);}
 .team-title.team-2{background:#EFEFF2; color:var(--ink);}
-.team-list{display:flex; flex-direction:column; gap:8px; min-height:40px;}
+.team-list{display:flex; flex-direction:column; gap:8px; flex: 1;}
+
+.adv-col {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.adv-box {
+  background: var(--bg-alt);
+  border: 1.5px solid var(--line);
+  border-radius: var(--radius);
+  padding: 20px 10px;
+  text-align: center;
+  font-family: var(--font-display);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ink);
+  min-width: 65px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.adv-box span.diff {
+  color: var(--red);
+  font-size: 15px;
+}
+.team-avg {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1.5px dashed var(--line);
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--ink-soft);
+  text-align: center;
+}
 
 .tag-chip{
   display:flex;
@@ -669,7 +708,7 @@ main{flex:1;}
   font-size: 12px;
 }
 
-/* ---- GROUP & MULTI-ROW CHIP STYLES ---- */
+/* ---- GROUP & CAPTAIN CHIP STYLES ---- */
 .unassigned-chip.has-group, .tag-chip.has-group {
   display: flex;
   flex-direction: column;
@@ -684,6 +723,12 @@ main{flex:1;}
   justify-content: space-between;
   width: 100%;
   gap: 8px;
+}
+.chip-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
 }
 .team-btns {
   display: flex;
@@ -726,4 +771,29 @@ main{flex:1;}
   background: var(--red-tint);
   border-color: var(--red);
   color: var(--red-dark);
+}
+
+.cap-btn {
+  border: 1.5px solid var(--line);
+  background: #fff;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 10px;
+  cursor: pointer;
+  color: var(--ink-soft);
+  transition: all 0.15s;
+}
+.cap-btn:hover:not(:disabled) {
+  border-color: #F7D573;
+  color: #DDAA2A;
+}
+.cap-btn.active {
+  background: #FFF9E6;
+  border-color: #F7D573;
+  color: #DDAA2A;
+}
+.cap-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
