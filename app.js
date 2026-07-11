@@ -582,13 +582,67 @@ function assignMaps(){
     chosen.push(item);
   }
 
-  state.mapAssignments = chosen.map((item, idx) => ({ game: idx + 1, map: item.map, source: item.source }));
-  renderMapResults('#mapResultList');
+  const finalAssignments = chosen.map((item, idx) => ({ game: idx + 1, map: item.map, source: item.source }));
 
+  const team1First = Math.random() < 0.5;
+  const finalSide = {
+    1: team1First ? 'attack' : 'defense',
+    2: team1First ? 'defense' : 'attack'
+  };
+
+  runMapRouletteAnimation(finalAssignments, finalSide);
+}
+
+function runMapRouletteAnimation(finalAssignments, finalSide){
+  const box = $('#mapResultList');
+  box.innerHTML = '';
+  $('#btnAssignMaps').disabled = true;
+  $('#btn3-next').disabled = true;
   $('#mapResultWrap').classList.remove('hidden');
   $('#sideResultSetup').classList.add('hidden');
   $('#sideResultSetup').innerHTML = '';
-  $('#btn3-next').disabled = true;
+
+  const rows = finalAssignments.map(item => {
+    const row = document.createElement('div');
+    row.className = 'map-result-item spinning';
+    row.innerHTML = `
+      <span class="map-result-game">${item.game}세트</span>
+      <span class="map-result-name">${escapeHtml(MAPS[Math.floor(Math.random() * MAPS.length)])}</span>
+      <span class="map-result-badge map-result-badge-spin">?</span>
+    `;
+    box.appendChild(row);
+    return row;
+  });
+
+  rows.forEach((row, idx) => {
+    const nameEl = row.querySelector('.map-result-name');
+    const spinTimer = setInterval(() => {
+      nameEl.textContent = MAPS[Math.floor(Math.random() * MAPS.length)];
+    }, 55);
+
+    const stopDelay = 550 + idx * 380; // 왼쪽(먼저 시작한 세트)부터 순서대로 정지
+    setTimeout(() => {
+      clearInterval(spinTimer);
+      const item = finalAssignments[idx];
+      nameEl.textContent = item.map;
+      row.classList.remove('spinning');
+      row.classList.add('revealed');
+      const badge = row.querySelector('.map-result-badge');
+      badge.textContent = MAP_SOURCE_LABEL[item.source];
+      badge.className = `map-result-badge map-result-badge-${item.source}`;
+
+      if(idx === rows.length - 1){
+        state.mapAssignments = finalAssignments;
+        state.side = finalSide;
+        setTimeout(() => {
+          renderSideResultUI();
+          $('#sideResultSetup').classList.remove('hidden');
+          $('#btnAssignMaps').disabled = false;
+          $('#btn3-next').disabled = false;
+        }, 300);
+      }
+    }, stopDelay);
+  });
 }
 
 function renderMapResults(targetSel){
@@ -596,7 +650,7 @@ function renderMapResults(targetSel){
   box.innerHTML = '';
   state.mapAssignments.forEach(item => {
     const row = document.createElement('div');
-    row.className = 'map-result-item';
+    row.className = 'map-result-item revealed';
     row.innerHTML = `
       <span class="map-result-game">${item.game}세트</span>
       <span class="map-result-name">${escapeHtml(item.map)}</span>
@@ -606,21 +660,20 @@ function renderMapResults(targetSel){
   });
 }
 
-function rollSideSetup(){
-  const team1First = Math.random() < 0.5;
-  state.side = {
-    1: team1First ? 'attack' : 'defense',
-    2: team1First ? 'defense' : 'attack'
-  };
-
+function renderSideResultUI(){
   const box = $('#sideResultSetup');
-  box.classList.remove('hidden');
   box.innerHTML = `
-    <div class="side-result-item ${state.side[1]}">TEAM 1 · ${state.side[1] === 'attack' ? '선공' : '선수비'}</div>
-    <div class="side-result-item ${state.side[2]}">TEAM 2 · ${state.side[2] === 'attack' ? '선공' : '선수비'}</div>
+    <button type="button" class="side-result-item ${state.side[1]}" id="sideToggle1">TEAM 1 · ${state.side[1] === 'attack' ? '선공' : '선수비'}</button>
+    <button type="button" class="side-result-item ${state.side[2]}" id="sideToggle2">TEAM 2 · ${state.side[2] === 'attack' ? '선공' : '선수비'}</button>
   `;
+  $('#sideToggle1').addEventListener('click', toggleSides);
+  $('#sideToggle2').addEventListener('click', toggleSides);
+}
 
-  $('#btn3-next').disabled = false;
+function toggleSides(){
+  state.side[1] = state.side[1] === 'attack' ? 'defense' : 'attack';
+  state.side[2] = state.side[2] === 'attack' ? 'defense' : 'attack';
+  renderSideResultUI();
 }
 
 /* ---------------- SCREEN 4 : RESULT ---------------- */
@@ -691,7 +744,6 @@ $('#btn3-back').addEventListener('click', () => showScreen(2));
 $('#btn3-next').addEventListener('click', enterScreen4);
 $('#btn4-back').addEventListener('click', () => showScreen(3));
 $('#btnAssignMaps').addEventListener('click', assignMaps);
-$('#btnRollSideSetup').addEventListener('click', rollSideSetup);
 $('#btnSavePng').addEventListener('click', savePng);
 $$('#boSelect .bo-btn').forEach(btn => {
   btn.addEventListener('click', () => selectBo(Number(btn.dataset.bo)));

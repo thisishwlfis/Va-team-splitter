@@ -171,6 +171,9 @@ main{flex:1;}
   gap:12px;
   margin-top:8px;
 }
+.nav-row-left{
+  justify-content:flex-start;
+}
 .btn{
   font-family:var(--font-body);
   font-size:14px;
@@ -485,6 +488,37 @@ main{flex:1;}
 .map-result-badge-team1{background:var(--red-tint); color:var(--red-dark);}
 .map-result-badge-team2{background:#EFEFF2; color:var(--ink);}
 .map-result-badge-common{background:#FFF6DD; color:#8A6A00;}
+.map-result-badge-spin{background:#F0F0F2; color:var(--ink-soft);}
+
+.map-result-item.spinning{
+  background:var(--bg-alt);
+  border-color:var(--red);
+  overflow:hidden;
+}
+.map-result-item.spinning .map-result-name{
+  animation:mapRoulette .12s linear infinite;
+  color:var(--red);
+}
+@keyframes mapRoulette{
+  0%{transform:translateY(-3px); opacity:0.5;}
+  50%{transform:translateY(0); opacity:1;}
+  100%{transform:translateY(3px); opacity:0.5;}
+}
+.map-result-item.revealed{
+  animation:mapRevealPop .32s cubic-bezier(.34,1.56,.64,1);
+}
+@keyframes mapRevealPop{
+  0%{transform:scale(0.9); opacity:0.3;}
+  60%{transform:scale(1.03); opacity:1;}
+  100%{transform:scale(1); opacity:1;}
+}
+
+.side-result-item{
+  border:none;
+  cursor:pointer;
+  font-family:var(--font-display);
+}
+.side-result-item:hover{opacity:0.9;}
 
 .side-result-setup{
   display:grid;
