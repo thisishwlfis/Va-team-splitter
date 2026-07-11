@@ -14,10 +14,10 @@
       <div class="logo-mark">⟡</div>
       <h1>MatchSplit</h1>
       <div class="step-track" id="stepTrack">
-        <span class="step active" data-step="1">01 선택</span>
-        <span class="step" data-step="2">02 팀배정</span>
-        <span class="step" data-step="3">03 게임설정</span>
-        <span class="step" data-step="4">04 결과</span>
+        <span class="step active" data-step="1">01. 선택</span>
+        <span class="step" data-step="2">02. 팀배정</span>
+        <span class="step" data-step="3">03. 게임설정</span>
+        <span class="step" data-step="4">04. 결과</span>
       </div>
       <a href="register.html" class="mini-btn" style="text-decoration:none;">참가자 등록 신청</a>
       <a href="admin.html" class="mini-btn" style="text-decoration:none;">참가자 관리</a>
@@ -46,10 +46,11 @@
             <div class="temp-add-fields">
               <input type="text" id="tempTag" placeholder="닉네임#태그 (필수)" />
               <input type="text" id="tempName" placeholder="실명 (선택)" />
-              <select id="tempTier">
-                <option value="">티어 선택 (선택)</option>
-              </select>
+              <button type="button" class="tier-trigger" id="tempTierTrigger" style="background:#F0F0F2; color:#9A9BA3; border:1.5px dashed #D8D9DE;">티어 선택</button>
               <button type="button" class="btn btn-primary" id="btnAddTemp">추가</button>
+              <div class="tier-panel" id="tempTierPanel">
+                <div class="tier-panel-inner" id="tempTierPanelInner"></div>
+              </div>
             </div>
             <div id="tempAddMsg" class="load-error hidden"></div>
           </div>

@@ -26,6 +26,8 @@ function showScreen(n){
   $$('#stepTrack .step').forEach(s=>{
     s.classList.toggle('active', Number(s.dataset.step) === n);
   });
+  state.maxReachedScreen = Math.max(state.maxReachedScreen || 1, n);
+  updateStepTrackUI();
 }
 
 /* ---------------- TIER BADGE FUNCTION ---------------- */
@@ -852,19 +854,90 @@ function escapeHtml(str){
 
 /* ---------------- TEMP (ONE-OFF) PARTICIPANT ADD ---------------- */
 const TEMP_TIER_RANKS = ['Iron', 'Bronze', 'Silver', 'Gold', 'Platinum', 'Diamond', 'Ascendant', 'Immortal'];
+const TEMP_TIER_COLORS = {
+  Iron:      { bg: 'linear-gradient(135deg,#5B5E66,#34363B)', text: '#FFFFFF' },
+  Bronze:    { bg: 'linear-gradient(135deg,#B27C4A,#7A4D26)', text: '#FFFFFF' },
+  Silver:    { bg: 'linear-gradient(135deg,#D7D9DD,#A6AAB1)', text: '#26272B' },
+  Gold:      { bg: 'linear-gradient(135deg,#F7D573,#DDAA2A)', text: '#3A2C00' },
+  Platinum:  { bg: 'linear-gradient(135deg,#33D0C3,#0E8377)', text: '#FFFFFF' },
+  Diamond:   { bg: 'linear-gradient(135deg,#C1A2FF,#7C4DFF)', text: '#FFFFFF' },
+  Ascendant: { bg: 'linear-gradient(135deg,#42DA84,#0F8C48)', text: '#FFFFFF' },
+  Immortal:  { bg: 'linear-gradient(135deg,#C13E7B,#6E1339)', text: '#FFFFFF' },
+  Radiant:   { bg: 'linear-gradient(135deg,#FFEBA8,#FFD65C)', text: '#5C4300' }
+};
 
-function populateTempTierSelect(){
-  const sel = $('#tempTier');
-  if(!sel || sel.dataset.filled) return;
-  const opts = TEMP_TIER_RANKS.flatMap(r => [1,2,3].map(n => `${r} ${n}`));
-  opts.push('Radiant');
-  opts.forEach(v => {
-    const opt = document.createElement('option');
-    opt.value = v;
-    opt.textContent = v;
-    sel.appendChild(opt);
+let tempTier = '';
+
+function tempParseTier(value){
+  if(!value) return { rank:null, num:null };
+  if(value === 'Radiant') return { rank:'Radiant', num:null };
+  const parts = value.split(' ');
+  return { rank: parts[0], num: parts[1] || null };
+}
+function tempTierColor(rank){
+  return TEMP_TIER_COLORS[rank] || { bg:'#E7E7EA', text:'#6B6D76' };
+}
+function buildTempTierPanelHtml(){
+  const { rank, num } = tempParseTier(tempTier);
+  const groupsHtml = TEMP_TIER_RANKS.map(r => {
+    const rc = tempTierColor(r);
+    const numsHtml = [1,2,3].map(n => {
+      const active = (rank === r && String(num) === String(n));
+      return `<button type="button" class="tier-num-btn ${active ? 'active' : ''}" data-rank="${r}" data-num="${n}">${n}</button>`;
+    }).join('');
+    return `
+      <div class="tier-group">
+        <span class="tier-chip" style="background:${rc.bg}; color:${rc.text};">${r}</span>
+        <div class="tier-nums">${numsHtml}</div>
+      </div>`;
+  }).join('');
+  const radiantActive = rank === 'Radiant';
+  const rc = tempTierColor('Radiant');
+  const radiantHtml = `
+    <div class="tier-group tier-group-radiant">
+      <button type="button" class="tier-chip tier-chip-btn ${radiantActive ? 'active' : ''}" style="background:${rc.bg}; color:${rc.text};" data-rank="Radiant" data-num="">Radiant</button>
+    </div>`;
+  return groupsHtml + radiantHtml;
+}
+function renderTempTierTrigger(){
+  const trigger = $('#tempTierTrigger');
+  const { rank, num } = tempParseTier(tempTier);
+  if(rank){
+    const c = tempTierColor(rank);
+    trigger.textContent = rank === 'Radiant' ? 'Radiant' : `${rank} ${num || ''}`.trim();
+    trigger.style.cssText = `background:${c.bg}; color:${c.text};`;
+  }else{
+    trigger.textContent = '티어 선택';
+    trigger.style.cssText = 'background:#F0F0F2; color:#9A9BA3; border:1.5px dashed #D8D9DE;';
+  }
+}
+function wireTempTierPicker(){
+  const trigger = $('#tempTierTrigger');
+  const panel = $('#tempTierPanel');
+  const inner = $('#tempTierPanelInner');
+
+  trigger.addEventListener('click', (e) => {
+    e.stopPropagation();
+    inner.innerHTML = buildTempTierPanelHtml();
+    panel.classList.toggle('open');
   });
-  sel.dataset.filled = '1';
+
+  inner.addEventListener('click', (e) => {
+    const btn = e.target.closest('.tier-num-btn, .tier-chip-btn');
+    if(!btn) return;
+    e.stopPropagation();
+    const rank = btn.dataset.rank;
+    const num = btn.dataset.num;
+    tempTier = rank === 'Radiant' ? 'Radiant' : `${rank} ${num}`;
+    renderTempTierTrigger();
+    panel.classList.remove('open');
+  });
+
+  document.addEventListener('click', (e) => {
+    if(!e.target.closest('#tempTierPanel') && !e.target.closest('#tempTierTrigger')){
+      panel.classList.remove('open');
+    }
+  });
 }
 
 function addTempPlayer(){
@@ -873,7 +946,7 @@ function addTempPlayer(){
 
   const tag = $('#tempTag').value.trim();
   const name = $('#tempName').value.trim();
-  const tier = $('#tempTier').value;
+  const tier = tempTier;
 
   if(!tag){
     msg.classList.remove('hidden');
@@ -891,12 +964,13 @@ function addTempPlayer(){
 
   $('#tempTag').value = '';
   $('#tempName').value = '';
-  $('#tempTier').value = '';
+  tempTier = '';
+  renderTempTierTrigger();
   $('#tempTag').focus();
 }
 
 if($('#btnToggleTempAdd')){
-  populateTempTierSelect();
+  wireTempTierPicker();
   $('#btnToggleTempAdd').addEventListener('click', () => {
     $('#tempAddPanel').classList.toggle('hidden');
   });
@@ -904,6 +978,26 @@ if($('#btnToggleTempAdd')){
   $('#tempTag').addEventListener('keydown', (e) => { if(e.key === 'Enter') addTempPlayer(); });
   $('#tempName').addEventListener('keydown', (e) => { if(e.key === 'Enter') addTempPlayer(); });
 }
+
+/* ---------------- STEP TRACK CLICK NAVIGATION ---------------- */
+state.maxReachedScreen = 1;
+updateStepTrackUI();
+
+function updateStepTrackUI(){
+  $$('#stepTrack .step').forEach(s => {
+    const n = Number(s.dataset.step);
+    s.classList.toggle('reachable', n <= state.maxReachedScreen);
+  });
+}
+
+$$('#stepTrack .step').forEach(s => {
+  s.addEventListener('click', () => {
+    const n = Number(s.dataset.step);
+    if(n <= state.maxReachedScreen){
+      showScreen(n);
+    }
+  });
+});
 
 /* ---------------- NAV WIRING ---------------- */
 $('#btn1-next').addEventListener('click', enterScreen2);

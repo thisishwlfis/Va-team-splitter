@@ -80,6 +80,15 @@ html,body{
   background:var(--bg-alt);
   border:1px solid var(--line);
   letter-spacing:0.02em;
+  cursor:not-allowed;
+  transition:background .15s, color .15s, border-color .15s;
+}
+.step.reachable{
+  cursor:pointer;
+}
+.step.reachable:hover{
+  border-color:#C9CACF;
+  color:var(--ink);
 }
 .step.active{
   background:var(--red);
