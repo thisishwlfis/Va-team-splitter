@@ -340,4 +340,168 @@ function updateAveragesUI() {
   const t2Avg = t2Tags.length ? t2Sum / t2Tags.length : 0;
   
   $('#t1AvgBox').textContent = t1Tags.length ? `평균: ${t1Avg.toFixed(2)}` : '평균: 0.00';
-  $('#t2AvgBox').textContent = t2Tags.length ?
+  $('#t2AvgBox').textContent = t2Tags.length ? `평균: ${t2Avg.toFixed(2)}` : '평균: 0.00';
+  
+  const advBox = $('#advantageBox');
+  if (t1Tags.length > 0 || t2Tags.length > 0) {
+     const diff = Math.abs(t1Avg - t2Avg).toFixed(2);
+     if (t1Avg > t2Avg) {
+        advBox.innerHTML = `TEAM 1<br><span class="diff">+${diff}</span>`;
+     } else if (t2Avg > t1Avg) {
+        advBox.innerHTML = `TEAM 2<br><span class="diff">+${diff}</span>`;
+     } else {
+        advBox.innerHTML = `동일<br><span class="diff">0.00</span>`;
+     }
+  } else {
+     advBox.innerHTML = `대기중`;
+  }
+}
+
+function renderTeamScreen(){
+  const team1List = $('#team1List');
+  const team2List = $('#team2List');
+  const unassigned = $('#unassignedList');
+  team1List.innerHTML = '';
+  team2List.innerHTML = '';
+  unassigned.innerHTML = '';
+
+  if(!$('#sortControls')) {
+    const sortControls = document.createElement('div');
+    sortControls.id = 'sortControls';
+    sortControls.className = 'sort-controls';
+    sortControls.innerHTML = `
+      <button class="mini-btn" id="btnSortDesc">티어 내림차순</button>
+      <button class="mini-btn" id="btnSortAsc">티어 올림차순</button>
+    `;
+    $('#unassignedList').parentNode.insertBefore(sortControls, $('#unassignedList'));
+
+    $('#btnSortDesc').addEventListener('click', () => sortSelected(false));
+    $('#btnSortAsc').addEventListener('click', () => sortSelected(true));
+  }
+
+  state.selected.forEach(tag=>{
+    const teamNum = state.teamOf[tag];
+    const player = getPlayerByTag(tag);
+    const groupNum = state.groupOf[tag];
+    const isCap = state.captains.includes(tag);
+    const capDisabled = !isCap && state.captains.length >= 2 ? 'disabled' : '';
+    
+    const controlsHtml = `
+      <div class="chip-bottom">
+        <div class="group-controls">
+          <span class="group-label">그룹</span>
+          <button class="group-btn ${groupNum === 1 ? 'active' : ''}" data-group="1">1</button>
+          <button class="group-btn ${groupNum === 2 ? 'active' : ''}" data-group="2">2</button>
+          <button class="group-btn ${groupNum === 3 ? 'active' : ''}" data-group="3">3</button>
+        </div>
+        <button class="cap-btn ${isCap ? 'active' : ''}" data-tag="${tag}" ${capDisabled}>팀장</button>
+      </div>
+    `;
+
+    if(teamNum === 1 || teamNum === 2){
+      const chip = document.createElement('div');
+      chip.className = 'tag-chip has-group';
+      chip.innerHTML = `
+        <div class="chip-top">
+          <span>${escapeHtml(tag)} ${getTierBadgeHtml(player.tier)}</span>
+          <button class="remove-btn" aria-label="제거">✕</button>
+        </div>
+        ${controlsHtml}
+      `;
+      chip.querySelector('.remove-btn').addEventListener('click', ()=>{
+        assignTeam(tag, null);
+      });
+      wireControlButtons(chip, tag);
+      (teamNum === 1 ? team1List : team2List).appendChild(chip);
+    }else{
+      const chip = document.createElement('div');
+      chip.className = 'unassigned-chip has-group';
+      
+      const groupSize = groupNum ? state.selected.filter(t => state.groupOf[t] === groupNum).length : 1;
+      const t1full = countTeam(1) + groupSize > 5;
+      const t2full = countTeam(2) + groupSize > 5;
+
+      chip.innerHTML = `
+        <div class="chip-top">
+          <span>${escapeHtml(tag)} ${getTierBadgeHtml(player.tier)}</span>
+          <div class="team-btns">
+            <button class="mini-btn team-btn" data-team="1" ${t1full ? 'disabled' : ''}>1팀</button>
+            <button class="mini-btn team-btn" data-team="2" ${t2full ? 'disabled' : ''}>2팀</button>
+          </div>
+        </div>
+        ${controlsHtml}
+      `;
+      chip.querySelectorAll('.team-btn').forEach(btn=>{
+        btn.addEventListener('click', ()=>{
+          assignTeam(tag, Number(btn.dataset.team));
+        });
+      });
+      wireControlButtons(chip, tag);
+      unassigned.appendChild(chip);
+    }
+  });
+
+  updateAveragesUI();
+
+  const c1 = countTeam(1), c2 = countTeam(2);
+  $('#teamCounter').textContent = `1팀 ${c1}명 · 2팀 ${c2}명`;
+  $('#btn2-next').disabled = !(c1 === 5 && c2 === 5);
+}
+
+function countTeam(n){
+  return state.selected.filter(tag => state.teamOf[tag] === n).length;
+}
+
+/* ---------------- SCREEN 3 : RESULT ---------------- */
+function enterScreen3(){
+  renderResultLists();
+  $('#side1').textContent = '-';
+  $('#side1').className = 'side-badge';
+  $('#side2').textContent = '-';
+  $('#side2').className = 'side-badge';
+  showScreen(3);
+}
+
+function renderResultLists(){
+  const t1 = $('#resultTeam1');
+  const t2 = $('#resultTeam2');
+  t1.innerHTML = '';
+  t2.innerHTML = '';
+  state.selected.forEach(tag=>{
+    const player = getPlayerByTag(tag);
+    const isCap = state.captains.includes(tag);
+    const chip = document.createElement('div');
+    chip.className = 'tag-chip';
+    chip.style.justifyContent = 'flex-start';
+    chip.innerHTML = `<span>${isCap ? '👑 ' : ''}${escapeHtml(tag)} ${getTierBadgeHtml(player.tier)}</span>`;
+    if(state.teamOf[tag] === 1) t1.appendChild(chip);
+    if(state.teamOf[tag] === 2) t2.appendChild(chip);
+  });
+}
+
+function rollSides(){
+  const team1First = Math.random() < 0.5;
+  const s1 = $('#side1');
+  const s2 = $('#side2');
+  s1.textContent = team1First ? '선공' : '선수비';
+  s2.textContent = team1First ? '선수비' : '선공';
+  s1.className = 'side-badge ' + (team1First ? 'attack' : 'defense');
+  s2.className = 'side-badge ' + (team1First ? 'defense' : 'attack');
+}
+
+/* ---------------- UTIL ---------------- */
+function escapeHtml(str){
+  return str.replace(/[&<>"']/g, c => ({
+    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+  }[c]));
+}
+
+/* ---------------- NAV WIRING ---------------- */
+$('#btn1-next').addEventListener('click', enterScreen2);
+$('#btn2-back').addEventListener('click', () => showScreen(1));
+$('#btn2-next').addEventListener('click', enterScreen3);
+$('#btn3-back').addEventListener('click', () => showScreen(2));
+$('#btn3-roll').addEventListener('click', rollSides);
+
+/* ---------------- INIT ---------------- */
+loadPlayers();
