@@ -544,6 +544,42 @@ function toggleMapPick(teamNum, map){
   $('#btnAssignMaps').disabled = !ready;
 }
 
+/**
+ * 세트별 공격/수비(진영) 배정 규칙
+ * - 1세트: 랜덤으로 선공/선수비 결정
+ * - 2세트: 1세트에서 선공이었던 팀이 선수비가 되도록 (반대로) 고정
+ * - 3세트: 다시 한번 랜덤으로 결정
+ * - 이후: 홀수 세트는 랜덤, 짝수 세트는 직전 세트를 반전 — 패턴 반복
+ * finalAssignments 배열의 각 아이템에 side1(TEAM1 진영), side2(TEAM2 진영)를 채워 넣는다.
+ */
+function applySetSides(finalAssignments){
+  let prevSide = null;
+
+  finalAssignments.forEach((item, idx) => {
+    const setNumber = idx + 1;
+    let side;
+
+    if(setNumber % 2 === 1){
+      // 홀수 세트: 랜덤 배정
+      const team1First = Math.random() < 0.5;
+      side = {
+        1: team1First ? 'attack' : 'defense',
+        2: team1First ? 'defense' : 'attack'
+      };
+    }else{
+      // 짝수 세트: 직전 세트의 진영을 서로 반전
+      side = {
+        1: prevSide[1] === 'attack' ? 'defense' : 'attack',
+        2: prevSide[2] === 'attack' ? 'defense' : 'attack'
+      };
+    }
+
+    item.side1 = side[1];
+    item.side2 = side[2];
+    prevSide = side;
+  });
+}
+
 function assignMaps(){
   const bo = state.bo;
   const t1 = state.teamMaps[1];
@@ -581,26 +617,7 @@ function assignMaps(){
 
   const finalAssignments = chosen.map((item, idx) => ({ game: idx + 1, map: item.map, source: item.source }));
 
-  // 진영(공/수) 배정: 홀수 세트는 랜덤, 짝수 세트는 직전 세트에서 수비였던 팀이 공격을 가져감
-  const setSides = [];
-  finalAssignments.forEach((item, idx) => {
-    const g = idx + 1;
-    if(g % 2 === 1){
-      const team1First = Math.random() < 0.5;
-      setSides.push({
-        1: team1First ? 'attack' : 'defense',
-        2: team1First ? 'defense' : 'attack'
-      });
-    }else{
-      const prev = setSides[idx - 1];
-      setSides.push({
-        1: prev[1] === 'attack' ? 'defense' : 'attack',
-        2: prev[2] === 'attack' ? 'defense' : 'attack'
-      });
-    }
-    item.side1 = setSides[idx][1];
-    item.side2 = setSides[idx][2];
-  });
+  applySetSides(finalAssignments);
 
   runMapRouletteAnimation(finalAssignments);
 }
