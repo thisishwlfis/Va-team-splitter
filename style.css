@@ -553,4 +553,26 @@ main{flex:1;}
   .row-delete{grid-column:span 2; justify-self:end; width:auto; padding:6px 12px;}
 }
 
+/* ---- TIER BADGE (알약 디자인) ---- */
+.tier-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  font-family: var(--font-display);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  margin-left: 6px;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.35), 0 1px 2px rgba(20,20,25,0.1);
+  vertical-align: middle;
+}
+
+/* 이름과 배지가 나란히 수직 중앙 정렬되도록 보정 */
+.player-name, .tag-chip, .unassigned-chip {
+  display: flex;
+  align-items: center;
 }

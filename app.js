@@ -22,6 +22,36 @@ function showScreen(n){
   });
 }
 
+/* ---------------- TIER BADGE FUNCTION ---------------- */
+function getTierBadgeHtml(tier) {
+  if (!tier) return '';
+  
+  const TIER_COLORS = {
+    Iron:      { bg: 'linear-gradient(135deg,#5B5E66,#34363B)', text: '#FFFFFF' },
+    Bronze:    { bg: 'linear-gradient(135deg,#B27C4A,#7A4D26)', text: '#FFFFFF' },
+    Silver:    { bg: 'linear-gradient(135deg,#D7D9DD,#A6AAB1)', text: '#26272B' },
+    Gold:      { bg: 'linear-gradient(135deg,#F7D573,#DDAA2A)', text: '#3A2C00' },
+    Platinum:  { bg: 'linear-gradient(135deg,#33D0C3,#0E8377)', text: '#FFFFFF' },
+    Diamond:   { bg: 'linear-gradient(135deg,#C1A2FF,#7C4DFF)', text: '#FFFFFF' },
+    Ascendant: { bg: 'linear-gradient(135deg,#42DA84,#0F8C48)', text: '#FFFFFF' },
+    Immortal:  { bg: 'linear-gradient(135deg,#C13E7B,#6E1339)', text: '#FFFFFF' },
+    Radiant:   { bg: 'linear-gradient(135deg,#FFEBA8,#FFD65C)', text: '#5C4300' }
+  };
+  
+  const parts = tier.split(' ');
+  const rank = parts[0];
+  const num = parts[1] || '';
+  
+  const abbr = rank === 'Radiant' ? 'R' : rank.charAt(0) + num;
+  const c = TIER_COLORS[rank] || { bg:'#E7E7EA', text:'#6B6D76' };
+  
+  return `<span class="tier-badge" style="background:${c.bg}; color:${c.text};">${abbr}</span>`;
+}
+
+function getPlayerByTag(tag) {
+  return state.players.find(p => p.tag === tag);
+}
+
 /* ---------------- LOAD DATA ---------------- */
 async function loadPlayers(){
   try{
@@ -65,7 +95,7 @@ function renderPlayerGrid(){
           <path d="M1 4.5L4 7.5L10 1.5" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
         </svg>
       </span>
-      <span class="player-name">${escapeHtml(p.tag)}</span>
+      <span class="player-name">${escapeHtml(p.tag)} ${getTierBadgeHtml(p.tier)}</span>
     `;
     card.addEventListener('click', () => toggleSelect(p.tag, card));
     grid.appendChild(card);
@@ -114,11 +144,12 @@ function renderTeamScreen(){
 
   state.selected.forEach(tag=>{
     const teamNum = state.teamOf[tag];
+    const player = getPlayerByTag(tag);
 
     if(teamNum === 1 || teamNum === 2){
       const chip = document.createElement('div');
       chip.className = 'tag-chip';
-      chip.innerHTML = `<span>${escapeHtml(tag)}</span><button aria-label="제거">✕</button>`;
+      chip.innerHTML = `<span>${escapeHtml(tag)} ${getTierBadgeHtml(player.tier)}</span><button aria-label="제거">✕</button>`;
       chip.querySelector('button').addEventListener('click', ()=>{
         state.teamOf[tag] = null;
         renderTeamScreen();
@@ -130,7 +161,7 @@ function renderTeamScreen(){
       const t1full = countTeam(1) >= 5;
       const t2full = countTeam(2) >= 5;
       chip.innerHTML = `
-        <span>${escapeHtml(tag)}</span>
+        <span>${escapeHtml(tag)} ${getTierBadgeHtml(player.tier)}</span>
         <button class="mini-btn" data-team="1" ${t1full ? 'disabled' : ''}>1팀</button>
         <button class="mini-btn" data-team="2" ${t2full ? 'disabled' : ''}>2팀</button>
       `;
@@ -169,10 +200,11 @@ function renderResultLists(){
   t1.innerHTML = '';
   t2.innerHTML = '';
   state.selected.forEach(tag=>{
+    const player = getPlayerByTag(tag);
     const chip = document.createElement('div');
     chip.className = 'tag-chip';
     chip.style.justifyContent = 'flex-start';
-    chip.innerHTML = `<span>${escapeHtml(tag)}</span>`;
+    chip.innerHTML = `<span>${escapeHtml(tag)} ${getTierBadgeHtml(player.tier)}</span>`;
     if(state.teamOf[tag] === 1) t1.appendChild(chip);
     if(state.teamOf[tag] === 2) t2.appendChild(chip);
   });
