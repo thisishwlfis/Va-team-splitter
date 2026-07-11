@@ -431,7 +431,7 @@ function renderTeamScreen(){
     sortControls.className = 'sort-controls';
     sortControls.innerHTML = `
       <button class="mini-btn" id="btnSortDesc">티어 내림차순</button>
-      <button class="mini-btn" id="btnSortAsc">티어 올림차순</button>
+      <button class="mini-btn" id="btnSortAsc">티어 오름차순</button>
     `;
     $('#unassignedList').parentNode.insertBefore(sortControls, $('#unassignedList'));
 
