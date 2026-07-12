@@ -1319,7 +1319,8 @@ const tState = {
   teamCount: 2,
   teamOf: {},           // tag -> team number
   groupOf: {},          // tag -> group number (1|2|3)
-  captains: []          // array of tags
+  captains: [],          // array of tags
+  expandedGameIdx: null  // index of the game row currently expanded in results view
 };
 
 function tGenId(){
@@ -1500,6 +1501,7 @@ async function tOpenResults(t){
       : { id:`tresult-${t.id}`, type:'tournament', tournamentId:t.id, tournamentName:t.name, teams:{ ...(t.teams || {}) }, teamCount:t.teamCount || 2, games:[] };
     tState.resultsDirty = false;
     tState.addGameDraft = null;
+    tState.expandedGameIdx = null;
     tRenderResults();
   }catch(err){
     view.innerHTML = `
@@ -2044,7 +2046,7 @@ function tRenderResults(){
   const killRanking = [...playerStats].sort((a, b) => b.k - a.k).slice(0, 5);
   const assistRanking = [...playerStats].sort((a, b) => b.a - a.a).slice(0, 5);
 
-  const buildPlayerRankHtml = (list, statKey) => list.length === 0
+  const buildPlayerRankHtml = (list, statKey, statLabel) => list.length === 0
     ? '<div class="t-team-card-empty">기록된 데이터가 없습니다.</div>'
     : list.map((p, idx) => {
         const player = getPlayerByTag(p.tag) || { tier:'' };
@@ -2052,23 +2054,76 @@ function tRenderResults(){
           <div class="t-rank-row">
             <span class="t-rank-pos">${idx + 1}</span>
             <span class="t-rank-name">${escapeHtml(p.tag)} ${getTierBadgeHtml(player.tier)}</span>
-            <span class="t-rank-stat">${p[statKey]} · (K${p.k}/D${p.d}/A${p.a})</span>
+            <span class="t-rank-stat">${statLabel} ${p[statKey]}</span>
           </div>
         `;
       }).join('');
 
+  const buildGameDetailHtml = (g) => {
+    const setsHtml = (g.mapAssignments || []).map((item, sIdx) => {
+      const setWinner = (g.setWinners || {})[sIdx];
+      return `
+        <div class="t-game-detail-set">
+          <span class="t-game-detail-set-num">${item.game}세트</span>
+          <span class="t-game-detail-set-map">${escapeHtml(item.map)}</span>
+          ${setWinner ? `<span class="map-set-winner-pill">TEAM ${setWinner} 승</span>` : '<span class="t-game-detail-set-nowin">기록 없음</span>'}
+        </div>
+      `;
+    }).join('') || '<div class="t-team-card-empty">세트 정보가 없습니다.</div>';
+
+    const buildTeamStatsCol = (teamNum) => {
+      const tags = Object.keys(g.stats || {}).filter(tag => tTeamMembers(teamNum).includes(tag));
+      const rowsHtml = tags.length === 0
+        ? '<div class="t-team-card-empty">기록된 선수가 없습니다.</div>'
+        : tags.map(tag => {
+            const p = getPlayerByTag(tag) || { tier:'' };
+            const s = g.stats[tag] || { k:0, d:0, a:0 };
+            return `
+              <div class="t-kda-row">
+                <span class="t-kda-name">${escapeHtml(tag)} ${getTierBadgeHtml(p.tier)}</span>
+                <span class="t-game-detail-kda">K${s.k} / D${s.d} / A${s.a}</span>
+              </div>
+            `;
+          }).join('');
+      return `
+        <div class="t-stats-col">
+          <span class="team-title t-stats-col-title">TEAM ${teamNum}</span>
+          ${rowsHtml}
+        </div>
+      `;
+    };
+
+    return `
+      <div class="t-game-detail">
+        <p class="counter" style="margin-bottom:8px;">세트별 결과</p>
+        <div class="t-game-detail-sets">${setsHtml}</div>
+        <p class="counter" style="margin:14px 0 8px;">선수별 기록</p>
+        <div class="t-stats-columns">
+          ${buildTeamStatsCol(g.teamA)}
+          ${buildTeamStatsCol(g.teamB)}
+        </div>
+      </div>
+    `;
+  };
+
   const gamesHtml = entry.games.length === 0
     ? '<div class="t-team-card-empty">아직 기록된 경기가 없습니다.</div>'
-    : entry.games.map((g, idx) => `
-      <div class="t-game-row">
-        <span>게임 ${idx + 1}</span>
-        <span class="t-game-winner">
-          TEAM ${g.teamA || '-'} vs TEAM ${g.teamB || '-'} · TEAM ${g.winnerTeam} 승리
-          ${g.bo ? `<span class="t-game-maps">BO${g.bo} · ${(g.mapAssignments || []).map(m => escapeHtml(m.map)).join(', ')}</span>` : ''}
-        </span>
-        <button type="button" class="row-delete t-game-delete" data-idx="${idx}" aria-label="삭제">✕</button>
+    : entry.games.map((g, idx) => {
+        const isOpen = tState.expandedGameIdx === idx;
+        return `
+      <div class="t-game-row-wrap ${isOpen ? 'expanded' : ''}">
+        <div class="t-game-row t-game-row-clickable" data-idx="${idx}">
+          <span>게임 ${idx + 1}</span>
+          <span class="t-game-winner">
+            TEAM ${g.teamA || '-'} vs TEAM ${g.teamB || '-'} · TEAM ${g.winnerTeam} 승리
+            ${g.bo ? `<span class="t-game-maps">BO${g.bo} · ${(g.mapAssignments || []).map(m => escapeHtml(m.map)).join(', ')}</span>` : ''}
+          </span>
+          <button type="button" class="row-delete t-game-delete" data-idx="${idx}" aria-label="삭제">✕</button>
+        </div>
+        ${isOpen ? buildGameDetailHtml(g) : ''}
       </div>
-    `).join('');
+    `;
+      }).join('');
 
   const addPanelHtml = tState.addGameDraft
     ? tBuildAddGamePanelHtml()
@@ -2088,11 +2143,11 @@ function tRenderResults(){
     <div class="t-rank-columns">
       <div class="t-rank-section">
         <span class="t-rank-title">킬 랭킹</span>
-        <div class="t-rank-list">${buildPlayerRankHtml(killRanking, 'k')}</div>
+        <div class="t-rank-list">${buildPlayerRankHtml(killRanking, 'k', 'K')}</div>
       </div>
       <div class="t-rank-section">
         <span class="t-rank-title">어시스트 랭킹</span>
-        <div class="t-rank-list">${buildPlayerRankHtml(assistRanking, 'a')}</div>
+        <div class="t-rank-list">${buildPlayerRankHtml(assistRanking, 'a', 'A')}</div>
       </div>
     </div>
 
@@ -2113,10 +2168,21 @@ function tRenderResults(){
   });
 
   $$('.t-game-delete').forEach(btn => {
-    btn.addEventListener('click', () => {
-      entry.games.splice(Number(btn.dataset.idx), 1);
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const idx = Number(btn.dataset.idx);
+      entry.games.splice(idx, 1);
       entry.games.forEach((g, i) => { g.game = i + 1; });
       tState.resultsDirty = true;
+      tState.expandedGameIdx = null;
+      tRenderResults();
+    });
+  });
+
+  $$('.t-game-row-clickable').forEach(row => {
+    row.addEventListener('click', () => {
+      const idx = Number(row.dataset.idx);
+      tState.expandedGameIdx = (tState.expandedGameIdx === idx) ? null : idx;
       tRenderResults();
     });
   });

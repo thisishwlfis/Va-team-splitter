@@ -593,12 +593,13 @@ main{flex:1;}
 }
 .map-set-winner-pill{
   font-size:10px;
-  font-weight:700;
-  padding:3px 8px;
+  font-weight:800;
+  padding:3px 9px;
   border-radius:999px;
-  background:rgba(255,255,255,0.92);
-  color:var(--ink);
+  background:linear-gradient(135deg,#FFE58A,#FFC93C);
+  color:#5C4300;
   white-space:nowrap;
+  box-shadow:0 1px 3px rgba(0,0,0,0.22), inset 0 1px 0 rgba(255,255,255,0.5);
 }
 .t-set-kda-panel{
   border:1px solid var(--line);
@@ -2281,6 +2282,64 @@ body.tournament-theme .group-btn.active{
   font-size:11.5px;
   font-weight:600;
   color:var(--ink-soft);
+}
+
+.t-game-row-wrap{
+  border-radius:10px;
+  overflow:hidden;
+}
+.t-game-row-clickable{
+  cursor:pointer;
+  margin-bottom:0;
+  transition:border-color .15s, background .15s;
+}
+.t-game-row-clickable:hover{border-color:#D8D9DE;}
+.t-game-row-wrap.expanded .t-game-row-clickable{
+  border-radius:10px 10px 0 0;
+  border-bottom:none;
+}
+.t-game-detail{
+  border:1px solid var(--line);
+  border-top:none;
+  border-radius:0 0 10px 10px;
+  padding:14px;
+  background:var(--bg);
+}
+.t-game-detail-sets{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+}
+.t-game-detail-set{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  padding:8px 10px;
+  border-radius:8px;
+  background:var(--bg-alt);
+  border:1px solid var(--line);
+  font-size:12.5px;
+}
+.t-game-detail-set-num{
+  font-family:var(--font-display);
+  font-weight:700;
+  color:var(--ink-soft);
+  min-width:40px;
+}
+.t-game-detail-set-map{
+  flex:1;
+  font-weight:700;
+}
+.t-game-detail-set-nowin{
+  font-size:11px;
+  color:var(--ink-soft);
+  font-weight:600;
+}
+.t-game-detail-kda{
+  font-size:12px;
+  color:var(--ink-soft);
+  font-weight:600;
+  white-space:nowrap;
 }
 .t-add-game-row{
   display:flex;
