@@ -483,6 +483,7 @@ main{flex:1;}
 .map-chip:disabled{opacity:0.35; cursor:not-allowed;}
 
 .map-result-wrap{margin-bottom:20px;}
+.t-add-map-result-list{margin-top:18px;}
 .map-result-list{
   display:flex;
   flex-direction:column;

@@ -1573,23 +1573,25 @@ function tBuildAddGamePanelHtml(){
 
   if(teamA && teamB && draft.bo && draft.mapAssignments.length === 0){
     mapPickHtml = `
-      <p class="counter" style="margin-top:18px;">각 팀이 선호하는 맵을 ${draft.bo}개씩 고르세요</p>
-      <div class="map-picker-columns">
-        <div class="map-picker-col">
-          <div class="team-title team-1">TEAM ${teamA}</div>
-          <p class="map-pick-count" id="tAddT1PickCount">${draft.teamMaps[1].length} / ${draft.bo} 선택</p>
-          <div class="map-grid" id="tAddT1MapGrid"></div>
+      <div class="map-picker-wrap" id="tAddMapPickSection">
+        <p class="counter" style="margin-top:18px; margin-bottom:10px;">각 팀이 선호하는 맵을 ${draft.bo}개씩 고르세요</p>
+        <div class="map-picker-columns">
+          <div class="map-picker-col">
+            <div class="team-title team-1">TEAM ${teamA}</div>
+            <p class="map-pick-count" id="tAddT1PickCount">${draft.teamMaps[1].length} / ${draft.bo} 선택</p>
+            <div class="map-grid" id="tAddT1MapGrid"></div>
+          </div>
+          <div class="map-picker-col">
+            <div class="team-title team-2">TEAM ${teamB}</div>
+            <p class="map-pick-count" id="tAddT2PickCount">${draft.teamMaps[2].length} / ${draft.bo} 선택</p>
+            <div class="map-grid" id="tAddT2MapGrid"></div>
+          </div>
         </div>
-        <div class="map-picker-col">
-          <div class="team-title team-2">TEAM ${teamB}</div>
-          <p class="map-pick-count" id="tAddT2PickCount">${draft.teamMaps[2].length} / ${draft.bo} 선택</p>
-          <div class="map-grid" id="tAddT2MapGrid"></div>
+        <div class="nav-row nav-row-right">
+          <button type="button" class="btn btn-primary" id="btnTAddAssignMaps" ${(draft.teamMaps[1].length === draft.bo && draft.teamMaps[2].length === draft.bo) ? '' : 'disabled'}>맵 / 진영 배정</button>
         </div>
       </div>
-      <div class="nav-row nav-row-right">
-        <button type="button" class="btn btn-primary" id="btnTAddAssignMaps" ${(draft.teamMaps[1].length === draft.bo && draft.teamMaps[2].length === draft.bo) ? '' : 'disabled'}>맵 / 진영 배정</button>
-      </div>
-      <div class="map-result-list" id="tAddMapResultList"></div>
+      <div class="map-result-list t-add-map-result-list" id="tAddMapResultList"></div>
     `;
   }
 
@@ -1834,6 +1836,8 @@ function tAssignMapsForDraft(){
 
 function tRunMapRouletteAnimation(finalAssignments){
   const draft = tState.addGameDraft;
+  const pickSection = $('#tAddMapPickSection');
+  if(pickSection) pickSection.classList.add('hidden');
   const box = $('#tAddMapResultList');
   if(!box) return;
   box.innerHTML = '';
