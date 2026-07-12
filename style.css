@@ -1987,3 +1987,63 @@ body.tournament-theme .tournament-badge{
   border-color:var(--red);
   color:#fff;
 }
+
+/* 대회모드 팀 수 선택 버튼 - 다크테마 대응 */
+body.tournament-theme .bo-btn{
+  background:var(--bg-alt);
+  color:var(--ink-soft);
+  border-color:var(--line);
+}
+body.tournament-theme .bo-btn.active{
+  background:var(--red);
+  border-color:var(--red);
+  color:#fff;
+}
+
+/* 대회모드 팀 상자 미리보기 */
+.t-team-preview{
+  display:grid;
+  grid-template-columns:repeat(3, 1fr);
+  gap:12px;
+  margin:20px 0;
+}
+.t-team-card{
+  border:1.5px solid var(--line);
+  border-radius:var(--radius);
+  background:var(--bg-alt);
+  padding:14px 16px;
+}
+.t-team-card-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  margin-bottom:10px;
+}
+.t-team-card-title{
+  font-family:var(--font-display);
+  font-weight:700;
+  font-size:14px;
+}
+.t-team-card-avg{
+  font-size:12px;
+  font-weight:600;
+  color:var(--ink-soft);
+  display:flex;
+  align-items:center;
+  gap:4px;
+}
+.t-team-card-players{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+}
+.t-team-card-player{
+  font-size:13px;
+  display:flex;
+  align-items:center;
+  gap:6px;
+}
+.t-team-card-empty{
+  font-size:12.5px;
+  color:var(--ink-soft);
+}

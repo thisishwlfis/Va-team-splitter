@@ -1492,20 +1492,43 @@ function tRenderEditMembers(){
   view.innerHTML = `
     <div class="screen-intro">
       <h2>${escapeHtml(tState.editing.name)} · 멤버 선택</h2>
-      <p class="counter">${count}명 선택됨 (인원 제한 없음)</p>
+      <p class="counter" id="tMemberCounter">${count}명 선택됨 (인원 제한 없음)</p>
     </div>
-    <div id="tMemberGrid" class="t-player-grid"></div>
+    <div class="search-container">
+      <input type="text" id="tPlayerSearch" placeholder="닉네임 또는 실명 검색..." autocomplete="off" />
+      <div id="tSearchDropdown" class="search-dropdown hidden"></div>
+    </div>
+    <div id="tMemberGrid" class="player-grid"></div>
     <div class="nav-row">
       <button class="btn btn-ghost" id="btnTMembersBack">← 대회 목록</button>
       <button class="btn btn-primary" id="btnTMembersNext" ${count === 0 ? 'disabled' : ''}>다음</button>
     </div>
   `;
 
+  function tUpdateCounter(){
+    const n = tState.memberSelection.length;
+    $('#tMemberCounter').textContent = `${n}명 선택됨 (인원 제한 없음)`;
+    $('#btnTMembersNext').disabled = n === 0;
+  }
+
+  function tToggleMember(tag){
+    const card = $$('#tMemberGrid .player-card').find(c => c.dataset.tag === tag);
+    const idx = tState.memberSelection.indexOf(tag);
+    if(idx === -1){
+      tState.memberSelection.push(tag);
+      if(card) card.classList.add('checked');
+    }else{
+      tState.memberSelection.splice(idx, 1);
+      if(card) card.classList.remove('checked');
+    }
+    tUpdateCounter();
+  }
+
   const grid = $('#tMemberGrid');
   state.players.forEach(p => {
     const card = document.createElement('div');
     const isSelected = tState.memberSelection.includes(p.tag);
-    card.className = 'player-card t-full-row' + (isSelected ? ' checked' : '');
+    card.className = 'player-card' + (isSelected ? ' checked' : '');
     card.dataset.tag = p.tag;
     card.innerHTML = `
       <span class="checkbox">
@@ -1515,20 +1538,55 @@ function tRenderEditMembers(){
       </span>
       <span class="player-name">${escapeHtml(p.tag)} ${getTierBadgeHtml(p.tier)}</span>
     `;
-    card.addEventListener('click', () => {
-      const idx = tState.memberSelection.indexOf(p.tag);
-      if(idx === -1){
-        tState.memberSelection.push(p.tag);
-        card.classList.add('checked');
-      }else{
-        tState.memberSelection.splice(idx, 1);
-        card.classList.remove('checked');
-      }
-      const n = tState.memberSelection.length;
-      $('.counter').textContent = `${n}명 선택됨 (인원 제한 없음)`;
-      $('#btnTMembersNext').disabled = n === 0;
-    });
+    card.addEventListener('click', () => tToggleMember(p.tag));
     grid.appendChild(card);
+  });
+
+  const searchInput = $('#tPlayerSearch');
+  const searchDropdown = $('#tSearchDropdown');
+  searchInput.addEventListener('input', (e) => {
+    const query = e.target.value.trim().toLowerCase().replace(/\s+/g, '');
+    if(!query){
+      searchDropdown.classList.add('hidden');
+      return;
+    }
+    const matches = state.players.filter(p => {
+      const tagNoSpace = String(p.tag).toLowerCase().replace(/\s+/g, '');
+      const nameNoSpace = String(p.name || '').toLowerCase().replace(/\s+/g, '');
+      const matchTag = tagNoSpace.includes(query);
+      const matchNameExact = nameNoSpace === query;
+      const matchNamePartial = query.length >= 2 && nameNoSpace.includes(query);
+      return matchTag || matchNameExact || matchNamePartial;
+    });
+    if(matches.length === 0){
+      searchDropdown.innerHTML = '<div class="dropdown-empty">검색 결과가 없습니다.</div>';
+      searchDropdown.classList.remove('hidden');
+      return;
+    }
+    searchDropdown.innerHTML = matches.map(p => {
+      const isSelected = tState.memberSelection.includes(p.tag);
+      return `<div class="dropdown-item ${isSelected ? 'selected' : ''}" data-tag="${escapeHtml(p.tag)}">
+        <span class="dropdown-tag">${escapeHtml(p.tag)}</span>
+        ${p.name ? `<span class="dropdown-name">${escapeHtml(p.name)}</span>` : ''}
+        ${getTierBadgeHtml(p.tier)}
+        ${isSelected ? '<span class="dropdown-check">[선택됨]</span>' : ''}
+      </div>`;
+    }).join('');
+    searchDropdown.classList.remove('hidden');
+
+    searchDropdown.querySelectorAll('.dropdown-item').forEach(item => {
+      item.addEventListener('click', () => {
+        tToggleMember(item.dataset.tag);
+        searchInput.value = '';
+        searchDropdown.classList.add('hidden');
+        searchInput.focus();
+      });
+    });
+  });
+  document.addEventListener('click', (e) => {
+    if(!e.target.closest('.search-container')){
+      searchDropdown.classList.add('hidden');
+    }
   });
 
   $('#btnTMembersBack').addEventListener('click', tRenderList);
@@ -1561,6 +1619,7 @@ function tRenderEditTeams(){
     </div>
     <div class="bo-select" id="tTeamCountSelect">${teamBtnsHtml}</div>
     <div id="tAssignGrid" class="t-assign-grid"></div>
+    <div id="tTeamPreview" class="t-team-preview"></div>
     <div class="nav-row">
       <button class="btn btn-ghost" id="btnTTeamsBack">← 멤버 선택</button>
       <button class="btn btn-primary" id="btnTTeamsSave">저장</button>
@@ -1615,6 +1674,42 @@ function tRenderAssignGrid(){
       tRenderAssignGrid();
     });
   });
+
+  tRenderTeamPreview();
+}
+
+function tRenderTeamPreview(){
+  const box = $('#tTeamPreview');
+  if(!box) return;
+
+  const cardsHtml = Array.from({length: tState.teamCount}, (_, i) => i + 1).map(n => {
+    const tags = tState.memberSelection.filter(tag => tState.teamOf[tag] === n);
+    const playersHtml = tags.length
+      ? tags.map(tag => {
+          const p = getPlayerByTag(tag) || { tier:'' };
+          return `<div class="t-team-card-player">${escapeHtml(tag)} ${getTierBadgeHtml(p.tier)}</div>`;
+        }).join('')
+      : '<div class="t-team-card-empty">배정된 멤버 없음</div>';
+
+    let avgHtml = '평균 : -';
+    if(tags.length){
+      const sum = tags.reduce((acc, tag) => acc + getTierScoreExact((getPlayerByTag(tag) || {}).tier), 0);
+      const avgTier = getTierFromScore(sum / tags.length);
+      avgHtml = avgTier ? `평균 : <span>${avgTier}</span> ${getTierBadgeHtml(avgTier)}` : '평균 : -';
+    }
+
+    return `
+      <div class="t-team-card">
+        <div class="t-team-card-head">
+          <span class="t-team-card-title">TEAM ${n}</span>
+          <span class="t-team-card-avg">${avgHtml}</span>
+        </div>
+        <div class="t-team-card-players">${playersHtml}</div>
+      </div>
+    `;
+  }).join('');
+
+  box.innerHTML = cardsHtml;
 }
 
 function escapeAttrJs(str){ return escapeHtml(str).replace(/"/g, '&quot;'); }
