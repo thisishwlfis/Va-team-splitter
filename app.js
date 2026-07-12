@@ -1580,7 +1580,7 @@ function tBuildAddGamePanelHtml(){
     `;
 
     winnerHtml = `
-      <p class="counter" style="margin-top:18px;">승리 팀을 선택하세요</p>
+      <p class="counter" style="margin-bottom:10px;">승리 팀을 선택하세요</p>
       <div class="bo-select">
         <button type="button" class="bo-btn t-winner-btn ${draft.winner === teamA ? 'active' : ''}" data-team="${teamA}">TEAM ${teamA} 승</button>
         <button type="button" class="bo-btn t-winner-btn ${draft.winner === teamB ? 'active' : ''}" data-team="${teamB}">TEAM ${teamB} 승</button>
