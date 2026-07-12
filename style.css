@@ -2212,3 +2212,161 @@ body.tournament-theme .group-btn.active{
   gap:8px;
   margin-bottom:20px;
 }
+
+/* 대회모드: 경기 추가 폼 (맞대결 선택 + K/D/A 입력) */
+.t-add-game-panel{
+  border:1.5px solid var(--line);
+  border-radius:var(--radius);
+  padding:16px;
+  background:var(--bg-alt);
+  margin-bottom:20px;
+}
+.t-matchup-select{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:14px;
+  margin-bottom:6px;
+}
+@media (max-width:640px){
+  .t-matchup-select{ grid-template-columns:1fr; }
+}
+.t-matchup-label{
+  display:block;
+  font-size:11px;
+  font-weight:700;
+  color:var(--ink-soft);
+  text-transform:uppercase;
+  letter-spacing:0.06em;
+  margin-bottom:6px;
+}
+.t-stats-columns{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:14px;
+  margin-top:10px;
+}
+@media (max-width:640px){
+  .t-stats-columns{ grid-template-columns:1fr; }
+}
+.t-stats-col{
+  border:1px solid var(--line);
+  border-radius:12px;
+  padding:12px;
+  background:var(--bg);
+}
+.t-kda-head{
+  display:grid;
+  grid-template-columns:1fr 46px 46px 46px;
+  gap:6px;
+  font-size:10.5px;
+  font-weight:700;
+  color:var(--ink-soft);
+  padding:4px 2px;
+  text-align:center;
+}
+.t-kda-head span:first-child{ text-align:left; }
+.t-kda-row{
+  display:grid;
+  grid-template-columns:1fr auto;
+  align-items:center;
+  gap:8px;
+  padding:6px 2px;
+  border-top:1px solid var(--line);
+}
+.t-kda-row:first-of-type{ border-top:none; }
+.t-kda-name{
+  font-size:12.5px;
+  font-weight:600;
+  display:flex;
+  align-items:center;
+  gap:6px;
+}
+.t-kda-inputs{
+  display:flex;
+  gap:6px;
+}
+.t-kda-input{
+  width:46px;
+  padding:6px 4px;
+  text-align:center;
+  border-radius:6px;
+  border:1px solid var(--line);
+  background:var(--bg-alt);
+  color:var(--ink);
+  font-size:13px;
+}
+.t-kda-input:focus{
+  outline:none;
+  border-color:var(--red);
+}
+
+/* 대회모드: 실시간 랭킹 */
+.t-rank-columns{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:14px;
+  margin-bottom:18px;
+}
+@media (max-width:640px){
+  .t-rank-columns{ grid-template-columns:1fr; }
+}
+.t-rank-section{
+  border:1.5px solid var(--line);
+  border-radius:var(--radius);
+  padding:14px 16px;
+  background:var(--bg-alt);
+  margin-bottom:18px;
+}
+.t-rank-columns .t-rank-section{ margin-bottom:0; }
+.t-rank-title{
+  display:block;
+  font-size:13px;
+  font-weight:700;
+  color:var(--ink);
+  margin-bottom:10px;
+}
+.t-rank-list{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+}
+.t-rank-row{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  padding:8px 10px;
+  border-radius:8px;
+  background:var(--bg);
+  border:1px solid var(--line);
+  font-size:13px;
+}
+.t-rank-pos{
+  width:20px;
+  height:20px;
+  border-radius:50%;
+  background:var(--red-tint);
+  color:var(--red-dark);
+  font-size:11px;
+  font-weight:700;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  flex-shrink:0;
+}
+.t-rank-name{
+  flex:1;
+  font-weight:600;
+  display:flex;
+  align-items:center;
+  gap:6px;
+}
+.t-rank-stat{
+  font-size:12px;
+  color:var(--ink-soft);
+  font-weight:600;
+  white-space:nowrap;
+}
+body.tournament-theme .t-rank-pos{
+  background:var(--red-tint);
+  color:var(--red);
+}

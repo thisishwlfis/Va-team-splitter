@@ -1491,12 +1491,14 @@ async function tOpenResults(t){
     const { sha, results } = await fetchTournamentResults(cfg);
     tState.resultsSha = sha;
     tState.allResults = results;
+    tState.resultsTournament = t;
     const existing = results.find(r => r.type === 'tournament' && r.tournamentId === t.id);
     tState.currentResultEntry = existing
       ? { ...existing, games: [...(existing.games || [])] }
       : { id:`tresult-${t.id}`, type:'tournament', tournamentId:t.id, tournamentName:t.name, teams:{ ...(t.teams || {}) }, teamCount:t.teamCount || 2, games:[] };
     tState.resultsDirty = false;
-    tRenderResults(t);
+    tState.addGameDraft = null;
+    tRenderResults();
   }catch(err){
     view.innerHTML = `
       <div class="screen-intro">
@@ -1511,49 +1513,272 @@ async function tOpenResults(t){
   }
 }
 
-function tRenderResults(t){
-  const view = $('#tView');
+function tTeamMembers(n){
   const entry = tState.currentResultEntry;
-  const teamCount = entry.teamCount || t.teamCount || 2;
+  const tags = (entry.teams && entry.teams[n]) || [];
+  return tags;
+}
 
-  const winsByTeam = {};
-  for(let n = 1; n <= teamCount; n++) winsByTeam[n] = 0;
-  entry.games.forEach(g => { if(winsByTeam[g.winnerTeam] !== undefined) winsByTeam[g.winnerTeam]++; });
+/* ---- 경기 추가 폼 (맞대결 팀 선택 → 선수별 K/D/A 입력 → 승리 팀 선택) ---- */
+function tOpenAddGameForm(){
+  tState.addGameDraft = { teamA:null, teamB:null, winner:null, stats:{} };
+  tRenderResults();
+}
 
-  const scoreHtml = Array.from({length: teamCount}, (_, i) => i + 1).map(n => `
-    <div class="t-score-box">
-      <span class="team-title">TEAM ${n}</span>
-      <span class="t-score-num">${winsByTeam[n]}승</span>
-    </div>
+function tCancelAddGameForm(){
+  tState.addGameDraft = null;
+  tRenderResults();
+}
+
+function tBuildAddGamePanelHtml(){
+  const draft = tState.addGameDraft;
+  if(!draft) return '';
+  const teamCount = tState.currentResultEntry.teamCount || 2;
+  const teamBtnsHtml = (selectedVal, otherVal, slot) => Array.from({length:teamCount}, (_, i) => i + 1).map(n => `
+    <button type="button" class="mini-btn t-matchup-btn ${selectedVal === n ? 'active-1' : ''}" data-slot="${slot}" data-team="${n}" ${otherVal === n ? 'disabled' : ''}>TEAM ${n}</button>
   `).join('');
+
+  let statsHtml = '';
+  let winnerHtml = '';
+  if(draft.teamA && draft.teamB){
+    const buildStatsCol = (teamNum) => {
+      const tags = tTeamMembers(teamNum);
+      const rowsHtml = tags.length === 0
+        ? '<div class="t-team-card-empty">배정된 멤버가 없습니다.</div>'
+        : tags.map(tag => {
+            const p = getPlayerByTag(tag) || { tier:'' };
+            const s = draft.stats[tag] || { k:'', d:'', a:'' };
+            return `
+              <div class="t-kda-row">
+                <span class="t-kda-name">${escapeHtml(tag)} ${getTierBadgeHtml(p.tier)}</span>
+                <div class="t-kda-inputs">
+                  <input type="number" min="0" class="t-kda-input" data-tag="${escapeAttrJs(tag)}" data-stat="k" placeholder="K" value="${escapeAttrJs(String(s.k))}" />
+                  <input type="number" min="0" class="t-kda-input" data-tag="${escapeAttrJs(tag)}" data-stat="d" placeholder="D" value="${escapeAttrJs(String(s.d))}" />
+                  <input type="number" min="0" class="t-kda-input" data-tag="${escapeAttrJs(tag)}" data-stat="a" placeholder="A" value="${escapeAttrJs(String(s.a))}" />
+                </div>
+              </div>
+            `;
+          }).join('');
+      return `
+        <div class="t-stats-col">
+          <span class="team-title">TEAM ${teamNum}</span>
+          <div class="t-kda-head"><span></span><span>K</span><span>D</span><span>A</span></div>
+          ${rowsHtml}
+        </div>
+      `;
+    };
+
+    statsHtml = `
+      <p class="counter" style="margin-top:16px;">각 선수의 K / D / A를 입력하세요</p>
+      <div class="t-stats-columns">
+        ${buildStatsCol(draft.teamA)}
+        ${buildStatsCol(draft.teamB)}
+      </div>
+    `;
+
+    winnerHtml = `
+      <p class="counter" style="margin-top:16px;">승리 팀을 선택하세요</p>
+      <div class="bo-select">
+        <button type="button" class="bo-btn t-winner-btn ${draft.winner === draft.teamA ? 'active' : ''}" data-team="${draft.teamA}">TEAM ${draft.teamA} 승</button>
+        <button type="button" class="bo-btn t-winner-btn ${draft.winner === draft.teamB ? 'active' : ''}" data-team="${draft.teamB}">TEAM ${draft.teamB} 승</button>
+      </div>
+    `;
+  }
+
+  return `
+    <div class="t-add-game-panel">
+      <div class="screen-intro" style="margin-bottom:6px;"><h3 style="font-size:15px; margin:0;">경기 추가</h3></div>
+      <p class="counter">맞붙은 두 팀을 선택하세요</p>
+      <div class="t-matchup-select">
+        <div class="t-matchup-col">
+          <span class="t-matchup-label">TEAM A</span>
+          <div class="bo-select">${teamBtnsHtml(draft.teamA, draft.teamB, 'A')}</div>
+        </div>
+        <div class="t-matchup-col">
+          <span class="t-matchup-label">TEAM B</span>
+          <div class="bo-select">${teamBtnsHtml(draft.teamB, draft.teamA, 'B')}</div>
+        </div>
+      </div>
+      ${statsHtml}
+      ${winnerHtml}
+      <div class="nav-row">
+        <button class="btn btn-ghost" id="btnCancelAddGame">취소</button>
+        <button class="btn btn-primary" id="btnConfirmAddGame" ${(draft.teamA && draft.teamB && draft.winner) ? '' : 'disabled'}>경기 추가</button>
+      </div>
+    </div>
+  `;
+}
+
+function tWireAddGamePanel(){
+  const draft = tState.addGameDraft;
+  if(!draft) return;
+
+  $$('.t-matchup-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const slot = btn.dataset.slot;
+      const n = Number(btn.dataset.team);
+      if(slot === 'A') draft.teamA = (draft.teamA === n) ? null : n;
+      else draft.teamB = (draft.teamB === n) ? null : n;
+      draft.winner = null;
+      draft.stats = {};
+      tRenderResults();
+    });
+  });
+
+  $$('.t-kda-input').forEach(inp => {
+    inp.addEventListener('input', () => {
+      const tag = inp.dataset.tag;
+      const stat = inp.dataset.stat;
+      if(!draft.stats[tag]) draft.stats[tag] = { k:'', d:'', a:'' };
+      draft.stats[tag][stat] = inp.value;
+    });
+  });
+
+  $$('.t-winner-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      draft.winner = Number(btn.dataset.team);
+      tRenderResults();
+    });
+  });
+
+  const cancelBtn = $('#btnCancelAddGame');
+  if(cancelBtn) cancelBtn.addEventListener('click', tCancelAddGameForm);
+
+  const confirmBtn = $('#btnConfirmAddGame');
+  if(confirmBtn) confirmBtn.addEventListener('click', tConfirmAddGame);
+}
+
+function tConfirmAddGame(){
+  const draft = tState.addGameDraft;
+  if(!draft || !draft.teamA || !draft.teamB || !draft.winner) return;
+
+  const stats = {};
+  [...tTeamMembers(draft.teamA), ...tTeamMembers(draft.teamB)].forEach(tag => {
+    const s = draft.stats[tag] || {};
+    stats[tag] = {
+      k: Number(s.k) || 0,
+      d: Number(s.d) || 0,
+      a: Number(s.a) || 0
+    };
+  });
+
+  const entry = tState.currentResultEntry;
+  entry.games.push({
+    game: entry.games.length + 1,
+    teamA: draft.teamA,
+    teamB: draft.teamB,
+    winnerTeam: draft.winner,
+    stats
+  });
+
+  tState.resultsDirty = true;
+  tState.addGameDraft = null;
+  tRenderResults();
+}
+
+/* ---- 실시간 랭킹 계산 ---- */
+function tComputeTeamRanking(){
+  const entry = tState.currentResultEntry;
+  const teamCount = entry.teamCount || 2;
+  const wins = {}, played = {};
+  for(let n = 1; n <= teamCount; n++){ wins[n] = 0; played[n] = 0; }
+  entry.games.forEach(g => {
+    const a = g.teamA, b = g.teamB;
+    if(a && played[a] !== undefined) played[a]++;
+    if(b && played[b] !== undefined) played[b]++;
+    if(g.winnerTeam && wins[g.winnerTeam] !== undefined) wins[g.winnerTeam]++;
+  });
+  return Array.from({length:teamCount}, (_, i) => i + 1)
+    .map(n => ({ team:n, wins:wins[n], played:played[n] }))
+    .sort((x, y) => y.wins - x.wins || y.played - x.played);
+}
+
+function tComputePlayerStats(){
+  const entry = tState.currentResultEntry;
+  const totals = {};
+  entry.games.forEach(g => {
+    Object.entries(g.stats || {}).forEach(([tag, s]) => {
+      if(!totals[tag]) totals[tag] = { tag, k:0, d:0, a:0 };
+      totals[tag].k += Number(s.k) || 0;
+      totals[tag].d += Number(s.d) || 0;
+      totals[tag].a += Number(s.a) || 0;
+    });
+  });
+  return Object.values(totals);
+}
+
+function tRenderResults(){
+  const view = $('#tView');
+  const t = tState.resultsTournament;
+  const entry = tState.currentResultEntry;
+
+  const teamRanking = tComputeTeamRanking();
+  const teamRankHtml = teamRanking.map((r, idx) => `
+    <div class="t-rank-row">
+      <span class="t-rank-pos">${idx + 1}</span>
+      <span class="team-title" style="margin:0;">TEAM ${r.team}</span>
+      <span class="t-rank-stat">${r.wins}승 · ${r.played}경기</span>
+    </div>
+  `).join('') || '<div class="t-team-card-empty">아직 기록된 경기가 없습니다.</div>';
+
+  const playerStats = tComputePlayerStats();
+  const killRanking = [...playerStats].sort((a, b) => b.k - a.k).slice(0, 5);
+  const assistRanking = [...playerStats].sort((a, b) => b.a - a.a).slice(0, 5);
+
+  const buildPlayerRankHtml = (list, statKey) => list.length === 0
+    ? '<div class="t-team-card-empty">기록된 데이터가 없습니다.</div>'
+    : list.map((p, idx) => {
+        const player = getPlayerByTag(p.tag) || { tier:'' };
+        return `
+          <div class="t-rank-row">
+            <span class="t-rank-pos">${idx + 1}</span>
+            <span class="t-rank-name">${escapeHtml(p.tag)} ${getTierBadgeHtml(player.tier)}</span>
+            <span class="t-rank-stat">${p[statKey]} · (K${p.k}/D${p.d}/A${p.a})</span>
+          </div>
+        `;
+      }).join('');
 
   const gamesHtml = entry.games.length === 0
     ? '<div class="t-team-card-empty">아직 기록된 경기가 없습니다.</div>'
     : entry.games.map((g, idx) => `
       <div class="t-game-row">
         <span>게임 ${idx + 1}</span>
-        <span class="t-game-winner">TEAM ${g.winnerTeam} 승리</span>
+        <span class="t-game-winner">TEAM ${g.teamA || '-'} vs TEAM ${g.teamB || '-'} · TEAM ${g.winnerTeam} 승리</span>
         <button type="button" class="row-delete t-game-delete" data-idx="${idx}" aria-label="삭제">✕</button>
       </div>
     `).join('');
 
-  const addBtnsHtml = Array.from({length: teamCount}, (_, i) => i + 1).map(n => `
-    <button type="button" class="mini-btn t-add-game-btn" data-team="${n}">TEAM ${n} 승리 기록</button>
-  `).join('');
+  const addPanelHtml = tState.addGameDraft
+    ? tBuildAddGamePanelHtml()
+    : `<div class="nav-row nav-row-left"><button type="button" class="btn btn-ghost" id="btnOpenAddGame">+ 경기 추가</button></div>`;
 
   view.innerHTML = `
     <div class="screen-intro">
       <h2>${escapeHtml(t.name)} · 경기 결과</h2>
-      <p class="counter">각 경기가 끝날 때마다 승리 팀을 눌러 기록하고, 완료되면 저장하세요.</p>
+      <p class="counter">맞붙은 팀을 선택하고 선수별 K/D/A를 입력해 경기를 기록하세요.</p>
     </div>
 
-    <div class="t-score-row">${scoreHtml}</div>
+    <div class="t-rank-section">
+      <span class="t-rank-title">🏆 실시간 팀 랭킹</span>
+      <div class="t-rank-list">${teamRankHtml}</div>
+    </div>
+
+    <div class="t-rank-columns">
+      <div class="t-rank-section">
+        <span class="t-rank-title">⚔ 킬 랭킹</span>
+        <div class="t-rank-list">${buildPlayerRankHtml(killRanking, 'k')}</div>
+      </div>
+      <div class="t-rank-section">
+        <span class="t-rank-title">🤝 어시스트 랭킹</span>
+        <div class="t-rank-list">${buildPlayerRankHtml(assistRanking, 'a')}</div>
+      </div>
+    </div>
 
     <div class="t-games-list">${gamesHtml}</div>
 
-    <div class="t-add-game-row">${addBtnsHtml}</div>
+    ${addPanelHtml}
 
-    <div class="nav-row">
+    <div class="nav-row" style="margin-top:20px;">
       <button class="btn btn-ghost" id="btnBackToList">← 대회 목록</button>
       <button class="btn btn-primary" id="btnSaveResults">결과 저장</button>
     </div>
@@ -1565,27 +1790,25 @@ function tRenderResults(t){
     tRenderList();
   });
 
-  $$('.t-add-game-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      entry.games.push({ game: entry.games.length + 1, winnerTeam: Number(btn.dataset.team) });
-      tState.resultsDirty = true;
-      tRenderResults(t);
-    });
-  });
-
   $$('.t-game-delete').forEach(btn => {
     btn.addEventListener('click', () => {
       entry.games.splice(Number(btn.dataset.idx), 1);
       entry.games.forEach((g, i) => { g.game = i + 1; });
       tState.resultsDirty = true;
-      tRenderResults(t);
+      tRenderResults();
     });
   });
 
-  $('#btnSaveResults').addEventListener('click', () => tSaveResults(t));
+  const openBtn = $('#btnOpenAddGame');
+  if(openBtn) openBtn.addEventListener('click', tOpenAddGameForm);
+
+  tWireAddGamePanel();
+
+  $('#btnSaveResults').addEventListener('click', tSaveResults);
 }
 
-async function tSaveResults(t){
+async function tSaveResults(){
+  const t = tState.resultsTournament;
   const msgBox = $('#tResultsMsg');
   const btn = $('#btnSaveResults');
   msgBox.classList.add('hidden');
@@ -1621,6 +1844,7 @@ async function tSaveResults(t){
     btn.textContent = '결과 저장';
   }
 }
+
 
 /* ---------------- EDIT: STEP 1 - MEMBER SELECT ---------------- */
 function tOpenEditMembers(t){
