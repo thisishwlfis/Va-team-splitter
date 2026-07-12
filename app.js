@@ -1312,7 +1312,9 @@ const tState = {
   editStep: 'members',  // 'members' | 'teams'
   memberSelection: [],  // array of tags
   teamCount: 2,
-  teamOf: {}            // tag -> team number
+  teamOf: {},           // tag -> team number
+  groupOf: {},          // tag -> group number (1|2|3)
+  captains: []          // array of tags
 };
 
 function tGenId(){
@@ -1599,6 +1601,7 @@ function tOpenEditTeams(){
   tState.teamCount = t.teamCount && t.teamCount >= 2 ? t.teamCount : 2;
   tState.teamOf = {};
   tState.captains = Array.isArray(t.captains) ? [...t.captains] : [];
+  tState.groupOf = t.groupOf ? { ...t.groupOf } : {};
   tState.memberSelection.forEach(tag => {
     for(const [teamNum, tags] of Object.entries(t.teams || {})){
       if(Array.isArray(tags) && tags.includes(tag)) tState.teamOf[tag] = Number(teamNum);
@@ -1671,9 +1674,34 @@ function tSortMembers(asc){
 function tAssignMember(tag, teamNum){
   if(teamNum === null){
     delete tState.teamOf[tag];
-  }else{
-    tState.teamOf[tag] = teamNum;
+    tRenderTeamSetupBody();
+    return;
   }
+
+  if(tState.captains.includes(tag)){
+    // 팀장은 같은 팀에 다른 팀장이 있으면 서로 자리를 맞바꿈
+    const occupyingCap = tState.captains.find(c => c !== tag && tState.teamOf[c] === teamNum);
+    if(occupyingCap){
+      const myPrevTeam = tState.teamOf[tag];
+      tState.teamOf[occupyingCap] = myPrevTeam || null;
+      if(!myPrevTeam) delete tState.teamOf[occupyingCap];
+    }
+    tState.teamOf[tag] = teamNum;
+  }else{
+    const group = tState.groupOf[tag];
+    if(group){
+      tState.memberSelection.forEach(t => {
+        if(tState.groupOf[t] === group) tState.teamOf[t] = teamNum;
+      });
+    }else{
+      tState.teamOf[tag] = teamNum;
+    }
+  }
+  tRenderTeamSetupBody();
+}
+
+function tToggleGroup(tag, g){
+  tState.groupOf[tag] = (tState.groupOf[tag] === g) ? null : g;
   tRenderTeamSetupBody();
 }
 
@@ -1681,10 +1709,30 @@ function tToggleCaptain(tag){
   const idx = tState.captains.indexOf(tag);
   if(idx === -1){
     tState.captains.push(tag);
+    // 이미 다른 팀장이 있는 팀을 피해서, 비어있는 팀 번호에 자동 배정
+    const usedTeams = new Set(tState.captains.filter(c => c !== tag).map(c => tState.teamOf[c]).filter(Boolean));
+    let targetTeam = null;
+    for(let n = 1; n <= tState.teamCount; n++){
+      if(!usedTeams.has(n)){ targetTeam = n; break; }
+    }
+    if(targetTeam === null) targetTeam = 1;
+    tState.teamOf[tag] = targetTeam;
   }else{
     tState.captains.splice(idx, 1);
   }
   tRenderTeamSetupBody();
+}
+
+function tBuildGroupControlsHtml(tag){
+  const g = tState.groupOf[tag];
+  return `
+    <div class="group-controls">
+      <span class="group-label">그룹</span>
+      <button class="group-btn t-group-btn ${g === 1 ? 'active' : ''}" data-tag="${escapeAttrJs(tag)}" data-group="1">1</button>
+      <button class="group-btn t-group-btn ${g === 2 ? 'active' : ''}" data-tag="${escapeAttrJs(tag)}" data-group="2">2</button>
+      <button class="group-btn t-group-btn ${g === 3 ? 'active' : ''}" data-tag="${escapeAttrJs(tag)}" data-group="3">3</button>
+    </div>
+  `;
 }
 
 function tBuildCapBtnHtml(tag){
@@ -1728,12 +1776,15 @@ function tRenderTeamSetupBody(){
             <button class="remove-btn" aria-label="제거">✕</button>
           </div>
           <div class="chip-bottom">
-            <span></span>
+            ${tBuildGroupControlsHtml(tag)}
             ${tBuildCapBtnHtml(tag)}
           </div>
         `;
         chip.querySelector('.remove-btn').addEventListener('click', () => tAssignMember(tag, null));
         chip.querySelector('.t-cap-btn').addEventListener('click', () => tToggleCaptain(tag));
+        chip.querySelectorAll('.t-group-btn').forEach(btn => {
+          btn.addEventListener('click', () => tToggleGroup(btn.dataset.tag, Number(btn.dataset.group)));
+        });
         list.appendChild(chip);
       });
     }
@@ -1763,7 +1814,7 @@ function tRenderTeamSetupBody(){
           <div class="team-btns t-assign-teambtns">${teamBtnsHtml}</div>
         </div>
         <div class="chip-bottom">
-          <span></span>
+          ${tBuildGroupControlsHtml(tag)}
           ${tBuildCapBtnHtml(tag)}
         </div>
       `;
@@ -1771,6 +1822,9 @@ function tRenderTeamSetupBody(){
         btn.addEventListener('click', () => tAssignMember(tag, Number(btn.dataset.team)));
       });
       chip.querySelector('.t-cap-btn').addEventListener('click', () => tToggleCaptain(tag));
+      chip.querySelectorAll('.t-group-btn').forEach(btn => {
+        btn.addEventListener('click', () => tToggleGroup(btn.dataset.tag, Number(btn.dataset.group)));
+      });
       pool.appendChild(chip);
     });
   }
@@ -1794,6 +1848,7 @@ async function tSaveTeamsAndReturn(){
   t.teamCount = tState.teamCount;
   t.teams = teams;
   t.captains = [...tState.captains];
+  t.groupOf = { ...tState.groupOf };
 
   const idx = tState.tournaments.findIndex(x => x.id === t.id);
   if(idx !== -1) tState.tournaments[idx] = t;
