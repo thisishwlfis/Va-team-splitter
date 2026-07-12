@@ -135,6 +135,61 @@ async function loadPlayers(){
   }
 }
 
+/* ---------------- 공용 참가자 검색 컴포넌트 (일반모드 / 대회모드 공통) ---------------- */
+function attachPlayerSearch(inputEl, dropdownEl, wrapEl, { isSelected, onPick }){
+  inputEl.addEventListener('input', (e) => {
+    const query = e.target.value.trim().toLowerCase().replace(/\s+/g, '');
+    if(!query){
+      dropdownEl.classList.add('hidden');
+      return;
+    }
+
+    const matches = state.players.filter(p => {
+      const tagNoSpace = String(p.tag).toLowerCase().replace(/\s+/g, '');
+      const nameNoSpace = String(p.name || '').toLowerCase().replace(/\s+/g, '');
+
+      const matchTag = tagNoSpace.includes(query);
+      const matchNameExact = nameNoSpace === query;
+      const matchNamePartial = query.length >= 2 && nameNoSpace.includes(query);
+
+      return matchTag || matchNameExact || matchNamePartial;
+    });
+
+    if(matches.length === 0){
+      dropdownEl.innerHTML = '<div class="dropdown-empty">검색 결과가 없습니다.</div>';
+      dropdownEl.classList.remove('hidden');
+      return;
+    }
+
+    dropdownEl.innerHTML = matches.map(p => {
+      const selected = isSelected(p.tag);
+      return `<div class="dropdown-item ${selected ? 'selected' : ''}" data-tag="${escapeHtml(p.tag)}">
+        <span class="dropdown-tag">${escapeHtml(p.tag)}</span>
+        ${p.name ? `<span class="dropdown-name">${escapeHtml(p.name)}</span>` : ''}
+        ${getTierBadgeHtml(p.tier)}
+        ${selected ? '<span class="dropdown-check">[선택됨]</span>' : ''}
+      </div>`;
+    }).join('');
+
+    dropdownEl.classList.remove('hidden');
+
+    dropdownEl.querySelectorAll('.dropdown-item').forEach(item => {
+      item.addEventListener('click', () => {
+        onPick(item.dataset.tag);
+        inputEl.value = '';
+        dropdownEl.classList.add('hidden');
+        inputEl.focus();
+      });
+    });
+  });
+
+  document.addEventListener('click', (e) => {
+    if(!wrapEl.contains(e.target)){
+      dropdownEl.classList.add('hidden');
+    }
+  });
+}
+
 /* ---------------- SCREEN 1 : SELECT ---------------- */
 function renderPlayerGrid(){
   const grid = $('#playerGrid');
@@ -149,61 +204,9 @@ function renderPlayerGrid(){
     `;
     grid.parentNode.insertBefore(searchWrap, grid);
 
-    const searchInput = $('#playerSearch');
-    const searchDropdown = $('#searchDropdown');
-
-    searchInput.addEventListener('input', (e) => {
-      const query = e.target.value.trim().toLowerCase().replace(/\\s+/g, '');
-      if(!query){
-        searchDropdown.classList.add('hidden');
-        return;
-      }
-
-      const matches = state.players.filter(p => {
-        const tagNoSpace = String(p.tag).toLowerCase().replace(/\\s+/g, '');
-        const nameNoSpace = String(p.name || '').toLowerCase().replace(/\\s+/g, '');
-        
-        const matchTag = tagNoSpace.includes(query);
-        const matchNameExact = nameNoSpace === query;
-        const matchNamePartial = query.length >= 2 && nameNoSpace.includes(query);
-
-        return matchTag || matchNameExact || matchNamePartial;
-      });
-
-      if(matches.length === 0){
-        searchDropdown.innerHTML = '<div class="dropdown-empty">검색 결과가 없습니다.</div>';
-        searchDropdown.classList.remove('hidden');
-        return;
-      }
-
-      searchDropdown.innerHTML = matches.map(p => {
-        const isSelected = state.selected.includes(p.tag);
-        return `<div class="dropdown-item ${isSelected ? 'selected' : ''}" data-tag="${escapeHtml(p.tag)}">
-          <span class="dropdown-tag">${escapeHtml(p.tag)}</span>
-          ${p.name ? `<span class="dropdown-name">${escapeHtml(p.name)}</span>` : ''}
-          ${getTierBadgeHtml(p.tier)}
-          ${isSelected ? '<span class="dropdown-check">[선택됨]</span>' : ''}
-        </div>`;
-      }).join('');
-
-      searchDropdown.classList.remove('hidden');
-
-      $$('.dropdown-item').forEach(item => {
-        item.addEventListener('click', () => {
-          const tag = item.dataset.tag;
-          toggleSelect(tag);
-          
-          searchInput.value = '';
-          searchDropdown.classList.add('hidden');
-          searchInput.focus();
-        });
-      });
-    });
-
-    document.addEventListener('click', (e) => {
-      if(!searchWrap.contains(e.target)){
-        searchDropdown.classList.add('hidden');
-      }
+    attachPlayerSearch($('#playerSearch'), $('#searchDropdown'), searchWrap, {
+      isSelected: (tag) => state.selected.includes(tag),
+      onPick: (tag) => toggleSelect(tag)
     });
   }
 
@@ -1545,51 +1548,9 @@ function tRenderEditMembers(){
     grid.appendChild(card);
   });
 
-  const searchInput = $('#tPlayerSearch');
-  const searchDropdown = $('#tSearchDropdown');
-  searchInput.addEventListener('input', (e) => {
-    const query = e.target.value.trim().toLowerCase().replace(/\s+/g, '');
-    if(!query){
-      searchDropdown.classList.add('hidden');
-      return;
-    }
-    const matches = state.players.filter(p => {
-      const tagNoSpace = String(p.tag).toLowerCase().replace(/\s+/g, '');
-      const nameNoSpace = String(p.name || '').toLowerCase().replace(/\s+/g, '');
-      const matchTag = tagNoSpace.includes(query);
-      const matchNameExact = nameNoSpace === query;
-      const matchNamePartial = query.length >= 2 && nameNoSpace.includes(query);
-      return matchTag || matchNameExact || matchNamePartial;
-    });
-    if(matches.length === 0){
-      searchDropdown.innerHTML = '<div class="dropdown-empty">검색 결과가 없습니다.</div>';
-      searchDropdown.classList.remove('hidden');
-      return;
-    }
-    searchDropdown.innerHTML = matches.map(p => {
-      const isSelected = tState.memberSelection.includes(p.tag);
-      return `<div class="dropdown-item ${isSelected ? 'selected' : ''}" data-tag="${escapeHtml(p.tag)}">
-        <span class="dropdown-tag">${escapeHtml(p.tag)}</span>
-        ${p.name ? `<span class="dropdown-name">${escapeHtml(p.name)}</span>` : ''}
-        ${getTierBadgeHtml(p.tier)}
-        ${isSelected ? '<span class="dropdown-check">[선택됨]</span>' : ''}
-      </div>`;
-    }).join('');
-    searchDropdown.classList.remove('hidden');
-
-    searchDropdown.querySelectorAll('.dropdown-item').forEach(item => {
-      item.addEventListener('click', () => {
-        tToggleMember(item.dataset.tag);
-        searchInput.value = '';
-        searchDropdown.classList.add('hidden');
-        searchInput.focus();
-      });
-    });
-  });
-  document.addEventListener('click', (e) => {
-    if(!e.target.closest('.search-container')){
-      searchDropdown.classList.add('hidden');
-    }
+  attachPlayerSearch(view.querySelector('#tPlayerSearch'), view.querySelector('#tSearchDropdown'), view.querySelector('.search-container'), {
+    isSelected: (tag) => tState.memberSelection.includes(tag),
+    onPick: (tag) => tToggleMember(tag)
   });
 
   $('#btnTMembersBack').addEventListener('click', tRenderList);
@@ -1674,6 +1635,9 @@ function tRenderEditTeams(){
       Object.keys(tState.teamOf).forEach(tag => {
         if(tState.teamOf[tag] > tState.teamCount) delete tState.teamOf[tag];
       });
+      if(tState.captains.length > tState.teamCount){
+        tState.captains = tState.captains.slice(0, tState.teamCount);
+      }
       tRenderEditTeams();
     });
   });
@@ -1733,6 +1697,7 @@ function tToggleGroup(tag, g){
 function tToggleCaptain(tag){
   const idx = tState.captains.indexOf(tag);
   if(idx === -1){
+    if(tState.captains.length >= tState.teamCount) return;
     tState.captains.push(tag);
     // 이미 다른 팀장이 있는 팀을 피해서, 비어있는 팀 번호에 자동 배정
     const usedTeams = new Set(tState.captains.filter(c => c !== tag).map(c => tState.teamOf[c]).filter(Boolean));
@@ -1762,7 +1727,8 @@ function tBuildGroupControlsHtml(tag){
 
 function tBuildCapBtnHtml(tag){
   const isCap = tState.captains.includes(tag);
-  return `<button type="button" class="cap-btn t-cap-btn ${isCap ? 'active' : ''}" data-tag="${escapeAttrJs(tag)}">팀장</button>`;
+  const capDisabled = !isCap && tState.captains.length >= tState.teamCount ? 'disabled' : '';
+  return `<button type="button" class="cap-btn t-cap-btn ${isCap ? 'active' : ''}" data-tag="${escapeAttrJs(tag)}" ${capDisabled}>팀장</button>`;
 }
 
 function tRenderTeamSetupBody(){
@@ -1777,7 +1743,7 @@ function tRenderTeamSetupBody(){
     col.className = 't-team-col';
 
     const sum = tags.reduce((acc, tag) => acc + getTierScoreExact((getPlayerByTag(tag) || {}).tier), 0);
-    const avgTier = tags.length ? getTierFromScore(sum / tags.length) : null;
+    const avgTier = tags.length ? getTierFromScore(sum / 5) : null;
     const avgHtml = avgTier ? `평균 : <span>${avgTier}</span> ${getTierBadgeHtml(avgTier)}` : '평균 : -';
 
     col.innerHTML = `
@@ -1797,7 +1763,7 @@ function tRenderTeamSetupBody(){
         chip.className = 'tag-chip has-group';
         chip.innerHTML = `
           <div class="chip-top">
-            <span>${isCap ? '[팀장] ' : ''}${escapeHtml(tag)} ${getTierBadgeHtml(p.tier)}</span>
+            <span>${escapeHtml(tag)} ${getTierBadgeHtml(p.tier)}</span>
             <button class="remove-btn" aria-label="제거">✕</button>
           </div>
           <div class="chip-bottom">
