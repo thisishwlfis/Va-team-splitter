@@ -1721,13 +1721,19 @@ main{flex:1;}
    대회모드 (TOURNAMENT MODE)
    ============================================================ */
 .tournament-badge{
-  align-self:flex-start;
+  align-self:stretch;
   flex-shrink:0;
-  padding:9px 16px;
-  border-radius:10px;
-  border:1px solid #7a1420;
-  background:linear-gradient(135deg,#2a0407,#160203);
-  color:#ff5460;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:16px 20px;
+  border-radius:22px;
+  background:var(--glass-bg);
+  backdrop-filter:var(--glass-blur);
+  -webkit-backdrop-filter:var(--glass-blur);
+  border:1px solid var(--glass-border);
+  box-shadow:var(--glass-shadow);
+  color:#c8172a;
   font-family:var(--font-display);
   font-weight:700;
   font-size:13px;
@@ -1824,14 +1830,12 @@ body.tournament-theme .logo-mark{
   background:var(--red);
 }
 body.tournament-theme .tournament-badge{
-  background:linear-gradient(135deg,#ff2c3c,#8c0f1c);
-  color:#fff;
-  border-color:#ff2c3c;
+  color:#ff5460;
 }
 
 .header-row{
   display:flex;
-  align-items:flex-start;
+  align-items:stretch;
   gap:12px;
   margin-bottom:0;
 }
