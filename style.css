@@ -43,9 +43,9 @@ body{
 }
 
 .app{
-  max-width:920px;
+  max-width:1240px;
   margin:0 auto;
-  padding:32px 20px 80px;
+  padding:32px 24px 80px;
   min-height:100vh;
   display:flex;
   flex-direction:column;
@@ -141,8 +141,8 @@ main{flex:1;}
 .player-card{
   display:flex;
   align-items:center;
-  gap:10px;
-  padding:12px 14px;
+  gap:12px;
+  padding:16px 18px;
   border:1.5px solid var(--line);
   border-radius:var(--radius);
   background:var(--bg-alt);
@@ -152,7 +152,11 @@ main{flex:1;}
   flex:0 0 auto;
   width:calc(25% - 7.5px);
   max-width:100%;
+  min-height:56px;
   box-sizing:border-box;
+}
+@media (max-width:900px){
+  .player-card{width:calc(33.333% - 6.7px);}
 }
 @media (max-width:640px){
   .player-card{width:calc(50% - 5px);}
@@ -177,6 +181,7 @@ main{flex:1;}
   align-items:center;
   justify-content:center;
   transition:all .15s;
+  flex-shrink:0;
 }
 .player-card.checked .checkbox{
   background:var(--red);
@@ -187,9 +192,12 @@ main{flex:1;}
 .player-name{
   font-size:14px;
   font-weight:600;
-  overflow:hidden;
-  text-overflow:ellipsis;
-  white-space:nowrap;
+  white-space:normal;
+  word-break:keep-all;
+  overflow-wrap:break-word;
+  line-height:1.4;
+  flex-wrap:wrap;
+  row-gap:4px;
 }
 
 /* NAV */
