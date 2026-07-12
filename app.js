@@ -1614,20 +1614,21 @@ function tBuildAddGamePanelHtml(){
   }
 
   if(teamA && teamB && draft.mapAssignments.length > 0){
-    const buildStatsCol = (teamNum) => {
+    const buildStatsCol = (teamNum, setIdx) => {
       const tags = tTeamMembers(teamNum);
       const rowsHtml = tags.length === 0
         ? '<div class="t-team-card-empty">배정된 멤버가 없습니다.</div>'
         : tags.map(tag => {
             const p = getPlayerByTag(tag) || { tier:'' };
-            const s = draft.stats[tag] || { k:'', d:'', a:'' };
+            if(!draft.stats[tag]) draft.stats[tag] = Array.from({length:draft.bo}, () => ({ k:'', d:'', a:'' }));
+            const s = draft.stats[tag][setIdx] || { k:'', d:'', a:'' };
             return `
               <div class="t-kda-row">
                 <span class="t-kda-name">${escapeHtml(tag)} ${getTierBadgeHtml(p.tier)}</span>
                 <div class="t-kda-inputs">
-                  <input type="text" inputmode="numeric" pattern="[0-9]*" class="t-kda-input" data-tag="${escapeAttrJs(tag)}" data-stat="k" placeholder="K" value="${escapeAttrJs(String(s.k))}" />
-                  <input type="text" inputmode="numeric" pattern="[0-9]*" class="t-kda-input" data-tag="${escapeAttrJs(tag)}" data-stat="d" placeholder="D" value="${escapeAttrJs(String(s.d))}" />
-                  <input type="text" inputmode="numeric" pattern="[0-9]*" class="t-kda-input" data-tag="${escapeAttrJs(tag)}" data-stat="a" placeholder="A" value="${escapeAttrJs(String(s.a))}" />
+                  <input type="text" inputmode="numeric" pattern="[0-9]*" class="t-kda-input" data-tag="${escapeAttrJs(tag)}" data-set="${setIdx}" data-stat="k" placeholder="K" value="${escapeAttrJs(String(s.k))}" />
+                  <input type="text" inputmode="numeric" pattern="[0-9]*" class="t-kda-input" data-tag="${escapeAttrJs(tag)}" data-set="${setIdx}" data-stat="d" placeholder="D" value="${escapeAttrJs(String(s.d))}" />
+                  <input type="text" inputmode="numeric" pattern="[0-9]*" class="t-kda-input" data-tag="${escapeAttrJs(tag)}" data-set="${setIdx}" data-stat="a" placeholder="A" value="${escapeAttrJs(String(s.a))}" />
                 </div>
               </div>
             `;
@@ -1641,13 +1642,15 @@ function tBuildAddGamePanelHtml(){
       `;
     };
 
-    statsHtml = `
-      <p class="counter" style="margin-top:18px;">각 선수의 K / D / A를 입력하세요</p>
+    const setBlocksHtml = Array.from({length:draft.bo}, (_, setIdx) => `
+      <p class="counter" style="margin-top:18px; margin-bottom:10px;">${setIdx + 1}세트 (${escapeHtml((draft.mapAssignments[setIdx] || {}).map || '')}) K / D / A</p>
       <div class="t-stats-columns">
-        ${buildStatsCol(teamA)}
-        ${buildStatsCol(teamB)}
+        ${buildStatsCol(teamA, setIdx)}
+        ${buildStatsCol(teamB, setIdx)}
       </div>
-    `;
+    `).join('');
+
+    statsHtml = setBlocksHtml;
 
     winnerHtml = `
       <p class="counter" style="margin-bottom:10px;
@@ -1708,6 +1711,8 @@ function tWireAddGamePanel(){
       draft.bo = Number(btn.dataset.bo);
       draft.teamMaps = { 1:[], 2:[] };
       draft.mapAssignments = [];
+      draft.stats = {};
+      draft.winner = null;
       tRenderResults();
     });
   });
@@ -1736,9 +1741,11 @@ function tWireAddGamePanel(){
     inp.addEventListener('input', () => {
       inp.value = inp.value.replace(/[^0-9]/g, '');
       const tag = inp.dataset.tag;
+      const setIdx = Number(inp.dataset.set);
       const stat = inp.dataset.stat;
-      if(!draft.stats[tag]) draft.stats[tag] = { k:'', d:'', a:'' };
-      draft.stats[tag][stat] = inp.value;
+      if(!draft.stats[tag]) draft.stats[tag] = Array.from({length:draft.bo}, () => ({ k:'', d:'', a:'' }));
+      if(!draft.stats[tag][setIdx]) draft.stats[tag][setIdx] = { k:'', d:'', a:'' };
+      draft.stats[tag][setIdx][stat] = inp.value;
     });
   });
 
@@ -1889,13 +1896,19 @@ function tConfirmAddGame(){
   if(!draft || !teamA || !teamB || !draft.winner || draft.mapAssignments.length === 0) return;
 
   const stats = {};
+  const setStats = {};
   [...tTeamMembers(teamA), ...tTeamMembers(teamB)].forEach(tag => {
-    const s = draft.stats[tag] || {};
-    stats[tag] = {
-      k: Number(s.k) || 0,
-      d: Number(s.d) || 0,
-      a: Number(s.a) || 0
-    };
+    const sets = draft.stats[tag] || [];
+    const totals = { k:0, d:0, a:0 };
+    const perSet = [];
+    for(let i = 0; i < draft.bo; i++){
+      const s = sets[i] || {};
+      const k = Number(s.k) || 0, d = Number(s.d) || 0, a = Number(s.a) || 0;
+      totals.k += k; totals.d += d; totals.a += a;
+      perSet.push({ k, d, a });
+    }
+    stats[tag] = totals;
+    setStats[tag] = perSet;
   });
 
   const entry = tState.currentResultEntry;
@@ -1906,7 +1919,8 @@ function tConfirmAddGame(){
     bo: draft.bo,
     mapAssignments: draft.mapAssignments,
     winnerTeam: draft.winner,
-    stats
+    stats,
+    setStats
   });
 
   tState.resultsDirty = true;

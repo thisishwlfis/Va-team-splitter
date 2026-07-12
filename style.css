@@ -1840,6 +1840,22 @@ body.tournament-theme .logo-mark{
 body.tournament-theme .tournament-badge{
   color:#ff5460;
 }
+body.tournament-theme .team-title.team-1{
+  background:rgba(255,44,60,0.18);
+  color:#ff8790;
+}
+body.tournament-theme .team-title.team-2{
+  background:rgba(255,255,255,0.10);
+  color:#f2f2f5;
+}
+body.tournament-theme .map-result-badge-team1{
+  background:rgba(255,44,60,0.18);
+  color:#ff8790;
+}
+body.tournament-theme .map-result-badge-team2{
+  background:rgba(255,255,255,0.10);
+  color:#f2f2f5;
+}
 
 .header-row{
   display:flex;
