@@ -13,6 +13,7 @@
     <header class="app-header">
       <div class="logo-mark">⟡</div>
       <h1>MatchSplit</h1>
+      <button type="button" class="tournament-badge" id="btnTournamentMode">🏆 대회모드</button>
       <div class="step-track" id="stepTrack">
         <span class="step active" data-step="1">01 선택</span>
         <span class="step" data-step="2">02 팀배정</span>
@@ -165,8 +166,11 @@
           <div class="map-result-list" id="finalMapResultList"></div>
         </div>
 
+        <div id="tournamentSaveMsg" class="load-error hidden"></div>
+
         <div class="nav-row">
           <button class="btn btn-ghost" id="btn4-back">이전</button>
+          <button class="btn btn-primary hidden" id="btnSaveTournamentResult">경기 결과 저장 (GitHub)</button>
           <button class="btn btn-primary" id="btnSavePng">PNG로 저장</button>
         </div>
       </section>
@@ -176,6 +180,19 @@
     </main>
 
     <footer class="app-footer">data/players.json 데이터를 기반으로 생성됨 · <a href="admin.html">참가자 관리 (관리자용)에서 편집</a></footer>
+
+    <div id="tournamentLoginOverlay" class="tournament-login-overlay hidden">
+      <div class="tournament-login-box">
+        <h3>🏆 대회모드 - 관리자 인증</h3>
+        <p class="hint-text" style="color:#c9a; opacity:0.8;">참가자 관리와 동일한 비밀번호를 입력하세요.</p>
+        <input type="password" id="tournamentPassword" placeholder="비밀번호 입력" autocomplete="off" />
+        <div class="nav-row">
+          <button class="btn btn-ghost" id="btnTournamentCancel">취소</button>
+          <button class="btn btn-primary" id="btnTournamentLogin">입장</button>
+        </div>
+        <div id="tournamentLoginError" class="load-error hidden"></div>
+      </div>
+    </div>
 
     <div id="balanceOverlay" class="balance-overlay hidden">
       <div class="balance-overlay-inner">
@@ -190,6 +207,7 @@
   </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="github-api.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

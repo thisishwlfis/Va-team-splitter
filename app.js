@@ -51,7 +51,8 @@ const state = {
   captains: [],         // array of tags (max 2)
   bo: null,             // 3 | 5 | 7 | 9
   teamMaps: { 1: [], 2: [] }, // tag -> selected maps per team
-  mapAssignments: []    // [{game, map, source: 'team1'|'team2'|'common'}]
+  mapAssignments: [],   // [{game, map, source: 'team1'|'team2'|'common'}]
+  tournamentMode: false
 };
 
 const $ = (sel) => document.querySelector(sel);
@@ -1220,6 +1221,180 @@ $('#btnSavePng').addEventListener('click', savePng);
 $$('#boSelect .bo-btn').forEach(btn => {
   btn.addEventListener('click', () => selectBo(Number(btn.dataset.bo)));
 });
+
+/* ============================================================
+   대회모드 (TOURNAMENT MODE)
+   - 관리자 비밀번호(admin.js와 동일한 해시)로 잠금
+   - 입장 시 대각선 3D 플립 애니메이션 + 블랙/레드 테마 전환
+   - 팀 구성/맵·공수 선택은 기존 화면(1~3단계)을 그대로 재사용
+   - 4단계 결과 화면에서 "경기 결과 저장" 버튼으로 GitHub 저장소에 커밋
+   ⚠️ ADMIN_PASSWORD_HASH 값은 admin.js 상단의 값과 항상 동일하게 유지하세요.
+   ============================================================ */
+const TOURNAMENT_ADMIN_PASSWORD_HASH = 'cbbd43db7343c78595d233d851d89a0f5435dd6c7cf6b57e0dbfd48ff5bf6aaa';
+const TOURNAMENT_RESULTS_PATH = 'data/tournament-results.json';
+
+async function tSha256Hex(str){
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+if($('#btnTournamentMode')){
+  $('#btnTournamentMode').addEventListener('click', () => {
+    $('#tournamentLoginOverlay').classList.remove('hidden');
+    $('#tournamentPassword').value = '';
+    $('#tournamentLoginError').classList.add('hidden');
+    $('#tournamentPassword').focus();
+  });
+  $('#btnTournamentCancel').addEventListener('click', () => {
+    $('#tournamentLoginOverlay').classList.add('hidden');
+  });
+  $('#tournamentPassword').addEventListener('keydown', (e) => {
+    if(e.key === 'Enter') attemptTournamentLogin();
+  });
+  $('#btnTournamentLogin').addEventListener('click', attemptTournamentLogin);
+}
+
+async function attemptTournamentLogin(){
+  const errBox = $('#tournamentLoginError');
+  errBox.classList.add('hidden');
+  const pw = $('#tournamentPassword').value;
+  if(TOURNAMENT_ADMIN_PASSWORD_HASH === 'REPLACE_WITH_YOUR_SHA256_HASH'){
+    errBox.classList.remove('hidden');
+    errBox.textContent = '설정 필요: admin.js의 ADMIN_PASSWORD_HASH가 아직 설정되지 않았습니다.';
+    return;
+  }
+  const hash = await tSha256Hex(pw);
+  if(hash === TOURNAMENT_ADMIN_PASSWORD_HASH){
+    $('#tournamentLoginOverlay').classList.add('hidden');
+    enterTournamentMode();
+  }else{
+    errBox.classList.remove('hidden');
+    errBox.textContent = '비밀번호가 올바르지 않습니다.';
+  }
+}
+
+function enterTournamentMode(){
+  const appEl = $('.app');
+  appEl.classList.add('tournament-flip');
+
+  // 애니메이션 중간(화면이 뒤집혀 안 보이는 시점)에 테마를 전환해 자연스럽게 보이도록 함
+  setTimeout(() => {
+    document.body.classList.add('tournament-theme');
+    state.tournamentMode = true;
+    $('#btnTournamentMode').classList.add('hidden');
+    $('#btnSaveTournamentResult').classList.remove('hidden');
+  }, 430);
+
+  appEl.addEventListener('animationend', () => {
+    appEl.classList.remove('tournament-flip');
+  }, { once:true });
+}
+
+/* ---------------- 대회모드 결과 저장 (GitHub 커밋) ---------------- */
+function tournamentApiUrl(cfg, path){
+  return `https://api.github.com/repos/${cfg.owner}/${cfg.repo}/contents/${path}?ref=${encodeURIComponent(cfg.branch)}`;
+}
+
+async function fetchTournamentResults(cfg){
+  const res = await fetch(tournamentApiUrl(cfg, TOURNAMENT_RESULTS_PATH), {
+    headers:{ 'Authorization': `token ${cfg.token}`, 'Accept': 'application/vnd.github+json' }
+  });
+  if(res.status === 404) return { sha:null, results:[] };
+  if(!res.ok){
+    const body = await res.text();
+    throw new Error(`불러오기 실패 (${res.status}): ${GitHubStore.explainError(res.status, body)}`);
+  }
+  const json = await res.json();
+  const text = GitHubStore.b64decode(json.content);
+  let results = [];
+  try{ results = JSON.parse(text); }catch(e){ results = []; }
+  return { sha: json.sha, results };
+}
+
+async function saveTournamentResults(cfg, results, sha){
+  const content = GitHubStore.b64encode(JSON.stringify(results, null, 2) + '\n');
+  const body = { message:'대회모드 경기 결과 저장', content, branch: cfg.branch };
+  if(sha) body.sha = sha;
+  const res = await fetch(tournamentApiUrl(cfg, TOURNAMENT_RESULTS_PATH).split('?')[0], {
+    method:'PUT',
+    headers:{
+      'Authorization': `token ${cfg.token}`,
+      'Accept': 'application/vnd.github+json',
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(body)
+  });
+  if(!res.ok){
+    const errBody = await res.text();
+    throw new Error(`저장 실패 (${res.status}): ${GitHubStore.explainError(res.status, errBody)}`);
+  }
+  return await res.json();
+}
+
+function buildTournamentRecord(){
+  const teamPlayers = (n) => state.selected
+    .filter(tag => state.teamOf[tag] === n)
+    .map(tag => {
+      const p = getPlayerByTag(tag) || {};
+      return { tag, name: p.name || '', tier: p.tier || '' };
+    });
+
+  return {
+    id: `match-${Date.now()}`,
+    playedAt: new Date().toISOString(),
+    bo: state.bo,
+    captains: state.captains,
+    team1: teamPlayers(1),
+    team2: teamPlayers(2),
+    mapAssignments: state.mapAssignments.map(item => ({
+      game: item.game,
+      map: item.map,
+      source: item.source,
+      side1: item.side1,
+      side2: item.side2
+    }))
+  };
+}
+
+if($('#btnSaveTournamentResult')){
+  $('#btnSaveTournamentResult').addEventListener('click', async () => {
+    const btn = $('#btnSaveTournamentResult');
+    const msgBox = $('#tournamentSaveMsg');
+    msgBox.classList.add('hidden');
+
+    const cfg = (typeof GitHubStore !== 'undefined') ? GitHubStore.getConfig() : null;
+    if(!cfg || !GitHubStore.hasConfig()){
+      msgBox.classList.remove('hidden');
+      msgBox.innerHTML = '<strong>GitHub 저장소 연결 정보가 없습니다.</strong><br>이 브라우저에서 "참가자 관리(admin.html)"에 먼저 로그인해 저장소를 연결해주세요.';
+      return;
+    }
+
+    btn.disabled = true;
+    const originalText = btn.textContent;
+    btn.textContent = '저장 중...';
+
+    try{
+      const { sha, results } = await fetchTournamentResults(cfg);
+      results.push(buildTournamentRecord());
+      await saveTournamentResults(cfg, results, sha);
+
+      msgBox.classList.remove('hidden');
+      msgBox.style.background = '#221012';
+      msgBox.style.borderColor = '#7a1420';
+      msgBox.style.color = '#ff8f97';
+      msgBox.innerHTML = '<strong>경기 결과가 저장되었습니다.</strong> (data/tournament-results.json)';
+    }catch(err){
+      msgBox.classList.remove('hidden');
+      msgBox.style.background = '';
+      msgBox.style.borderColor = '';
+      msgBox.style.color = '';
+      msgBox.innerHTML = `<strong>저장 실패</strong><br>${escapeHtml(err.message)}`;
+    }finally{
+      btn.disabled = false;
+      btn.textContent = originalText;
+    }
+  });
+}
 
 /* ---------------- INIT ---------------- */
 loadPlayers();

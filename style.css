@@ -1716,3 +1716,113 @@ main{flex:1;}
 .mini-btn:hover::after{
   left:130%;
 }
+
+/* ============================================================
+   대회모드 (TOURNAMENT MODE)
+   ============================================================ */
+.tournament-badge{
+  padding:9px 16px;
+  border-radius:10px;
+  border:1px solid #7a1420;
+  background:linear-gradient(135deg,#2a0407,#160203);
+  color:#ff5460;
+  font-family:var(--font-display);
+  font-weight:700;
+  font-size:13px;
+  letter-spacing:0.02em;
+  cursor:pointer;
+  transition:transform .15s ease, box-shadow .15s ease;
+}
+.tournament-badge:hover{
+  transform:translateY(-1px);
+  box-shadow:0 4px 14px rgba(225,29,46,0.35);
+}
+.tournament-badge.hidden{ display:none; }
+
+/* login modal */
+.tournament-login-overlay{
+  position:fixed; inset:0;
+  background:rgba(0,0,0,0.72);
+  display:flex; align-items:center; justify-content:center;
+  z-index:999;
+  backdrop-filter:blur(4px);
+}
+.tournament-login-overlay.hidden{ display:none; }
+.tournament-login-box{
+  width:320px;
+  background:linear-gradient(160deg,#1a0304,#0c0102);
+  border:1px solid #7a1420;
+  border-radius:16px;
+  padding:26px;
+  color:#f4f4f6;
+  box-shadow:0 20px 60px rgba(0,0,0,0.6);
+}
+.tournament-login-box h3{
+  margin:0 0 6px;
+  font-family:var(--font-display);
+  color:#ff5460;
+}
+.tournament-login-box input{
+  width:100%;
+  margin-top:14px;
+  padding:11px 12px;
+  border-radius:8px;
+  border:1px solid #5a1018;
+  background:#150506;
+  color:#fff;
+  font-size:14px;
+}
+.tournament-login-box input:focus{
+  outline:none;
+  border-color:#e11d2e;
+}
+.tournament-login-box .nav-row{ margin-top:16px; }
+
+/* diagonal top-to-bottom 3D flip transition */
+.tournament-flip{
+  animation: tournamentFlip 0.9s cubic-bezier(.45,0,.2,1);
+  transform-style: preserve-3d;
+  perspective: 1400px;
+  backface-visibility:hidden;
+}
+@keyframes tournamentFlip{
+  0%   { transform: rotate3d(1,1,0,0deg);   filter:brightness(1); }
+  48%  { transform: rotate3d(1,1,0,88deg);  filter:brightness(0.3); }
+  52%  { transform: rotate3d(1,1,0,-88deg); filter:brightness(0.3); }
+  100% { transform: rotate3d(1,1,0,0deg);   filter:brightness(1); }
+}
+
+/* black + red theme */
+body.tournament-theme{
+  --red: #FF2C3C;
+  --red-dark: #8C0F1C;
+  --red-tint: #2A0A0D;
+  --ink: #F2F2F5;
+  --ink-soft: #B9B4B6;
+  --line: #3A1418;
+  --bg: #0A0203;
+  --bg-alt: #150507;
+  --glass-bg: rgba(30,6,8,0.55);
+  --glass-bg-strong: rgba(30,6,8,0.75);
+  --glass-border: rgba(255,44,60,0.25);
+  --glass-shadow: 0 2px 18px rgba(0,0,0,0.5);
+  background:
+    radial-gradient(760px circle at 78% 6%, rgba(255,44,60,0.20), transparent 58%),
+    radial-gradient(680px circle at 10% 85%, rgba(140,15,28,0.18), transparent 55%),
+    linear-gradient(180deg, #0A0203 0%, #150507 100%) !important;
+  background-attachment:fixed;
+}
+body.tournament-theme .player-card,
+body.tournament-theme .team-list,
+body.tournament-theme .admin-row,
+body.tournament-theme .map-card{
+  border-color:var(--line);
+}
+body.tournament-theme .logo-mark{
+  background:var(--red);
+}
+body.tournament-theme .tournament-badge{
+  background:linear-gradient(135deg,#ff2c3c,#8c0f1c);
+  color:#fff;
+  border-color:#ff2c3c;
+}
