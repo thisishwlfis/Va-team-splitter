@@ -1287,8 +1287,372 @@ function enterTournamentMode(){
 
   appEl.addEventListener('animationend', () => {
     appEl.classList.remove('tournament-flip');
+    showTournamentScreen();
+    tRenderList();
   }, { once:true });
 }
+
+function showTournamentScreen(){
+  [1,2,3,4].forEach(i => $(`#screen-${i}`).classList.add('hidden'));
+  $('#stepTrack').classList.add('hidden');
+  $('#screen-t').classList.remove('hidden');
+}
+
+/* ============================================================
+   대회모드 - 대회 목록 / 편집 (멤버 선택 -> 팀 수 -> 팀 배정)
+   ============================================================ */
+const TOURNAMENTS_PATH = 'data/tournaments.json';
+const TOURNAMENTS_LOCAL_KEY = 'teamsplit_tournaments_local';
+
+const tState = {
+  tournaments: [],
+  sha: null,
+  usingLocal: false,
+  editing: null,        // tournament object currently being edited (draft)
+  editStep: 'members',  // 'members' | 'teams'
+  memberSelection: [],  // array of tags
+  teamCount: 2,
+  teamOf: {}            // tag -> team number
+};
+
+function tGenId(){
+  return `t-${Date.now()}-${Math.random().toString(36).slice(2,7)}`;
+}
+
+async function tLoadTournaments(){
+  const cfg = (typeof GitHubStore !== 'undefined') ? GitHubStore.getConfig() : null;
+  if(cfg && GitHubStore.hasConfig()){
+    try{
+      const res = await fetch(tournamentApiUrl(cfg, TOURNAMENTS_PATH), {
+        headers:{ 'Authorization': `token ${cfg.token}`, 'Accept': 'application/vnd.github+json' }
+      });
+      if(res.status === 404){
+        tState.tournaments = [];
+        tState.sha = null;
+      }else if(res.ok){
+        const json = await res.json();
+        const text = GitHubStore.b64decode(json.content);
+        tState.tournaments = JSON.parse(text || '[]');
+        tState.sha = json.sha;
+      }else{
+        throw new Error('불러오기 실패');
+      }
+      tState.usingLocal = false;
+      return;
+    }catch(e){
+      // fall through to local
+    }
+  }
+  tState.usingLocal = true;
+  try{
+    tState.tournaments = JSON.parse(localStorage.getItem(TOURNAMENTS_LOCAL_KEY) || '[]');
+  }catch(e){
+    tState.tournaments = [];
+  }
+}
+
+async function tSaveTournaments(){
+  if(!tState.usingLocal){
+    const cfg = GitHubStore.getConfig();
+    const content = GitHubStore.b64encode(JSON.stringify(tState.tournaments, null, 2) + '\n');
+    const body = { message:'대회모드 대회 정보 저장', content, branch: cfg.branch };
+    if(tState.sha) body.sha = tState.sha;
+    const res = await fetch(tournamentApiUrl(cfg, TOURNAMENTS_PATH).split('?')[0], {
+      method:'PUT',
+      headers:{
+        'Authorization': `token ${cfg.token}`,
+        'Accept': 'application/vnd.github+json',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(body)
+    });
+    if(!res.ok){
+      const errBody = await res.text();
+      throw new Error(`저장 실패 (${res.status}): ${GitHubStore.explainError(res.status, errBody)}`);
+    }
+    const json = await res.json();
+    tState.sha = json.content ? json.content.sha : tState.sha;
+  }else{
+    localStorage.setItem(TOURNAMENTS_LOCAL_KEY, JSON.stringify(tState.tournaments));
+  }
+}
+
+/* ---------------- LIST VIEW ---------------- */
+async function tRenderList(){
+  const view = $('#tView');
+  view.innerHTML = `<div class="t-loading">불러오는 중...</div>`;
+  await tLoadTournaments();
+
+  const localNote = tState.usingLocal
+    ? `<div class="t-local-note">⚠ GitHub 저장소가 연결되어 있지 않아 이 브라우저에만 저장됩니다. (admin.html에서 먼저 연결해주세요)</div>`
+    : '';
+
+  const boxesHtml = tState.tournaments.map(t => `
+    <div class="tournament-box" data-id="${t.id}">
+      <span class="tournament-box-name">${escapeHtml(t.name)}</span>
+      <button type="button" class="tournament-edit-btn" data-id="${t.id}">편집</button>
+    </div>
+  `).join('');
+
+  view.innerHTML = `
+    <div class="screen-intro">
+      <h2>대회 목록</h2>
+      <p class="counter">대회를 선택하면 경기 결과를 기록할 수 있습니다.</p>
+    </div>
+    ${localNote}
+    <div class="tournament-list">
+      ${boxesHtml || '<div class="t-empty">아직 등록된 대회가 없습니다.</div>'}
+    </div>
+    <div class="tournament-add-row">
+      <button type="button" class="btn btn-ghost" id="btnTournamentAddToggle">+ 대회 추가</button>
+      <div id="tAddForm" class="t-add-form hidden">
+        <input type="text" id="tNewName" placeholder="대회 이름 입력" />
+        <button type="button" class="btn btn-primary" id="btnTournamentAddConfirm">추가</button>
+      </div>
+    </div>
+    <div class="nav-row">
+      <button class="btn btn-ghost" id="btnExitTournament">대회모드 나가기</button>
+    </div>
+  `;
+
+  $('#btnTournamentAddToggle').addEventListener('click', () => {
+    $('#tAddForm').classList.toggle('hidden');
+    $('#tNewName').focus();
+  });
+  $('#tNewName').addEventListener('keydown', e => { if(e.key === 'Enter') tCreateTournament(); });
+  $('#btnTournamentAddConfirm').addEventListener('click', tCreateTournament);
+
+  $$('.tournament-box').forEach(box => {
+    box.addEventListener('click', (e) => {
+      if(e.target.closest('.tournament-edit-btn')) return;
+      const t = tState.tournaments.find(x => x.id === box.dataset.id);
+      tOpenResults(t);
+    });
+  });
+  $$('.tournament-edit-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const t = tState.tournaments.find(x => x.id === btn.dataset.id);
+      tOpenEditMembers(t);
+    });
+  });
+
+  $('#btnExitTournament').addEventListener('click', tExitTournamentMode);
+}
+
+async function tCreateTournament(){
+  const nameInput = $('#tNewName');
+  const name = nameInput.value.trim();
+  if(!name){ nameInput.focus(); return; }
+
+  const t = { id: tGenId(), name, memberTags: [], teamCount: 2, teams: {}, results: [] };
+  tState.tournaments.push(t);
+  try{
+    await tSaveTournaments();
+  }catch(err){
+    alert(`저장 실패: ${err.message}`);
+  }
+  tRenderList();
+}
+
+function tExitTournamentMode(){
+  document.body.classList.remove('tournament-theme');
+  state.tournamentMode = false;
+  $('#screen-t').classList.add('hidden');
+  $('#stepTrack').classList.remove('hidden');
+  $('#btnTournamentMode').classList.remove('hidden');
+  $('#btnSaveTournamentResult').classList.add('hidden');
+  showScreen(1);
+}
+
+function tOpenResults(t){
+  const view = $('#tView');
+  view.innerHTML = `
+    <div class="screen-intro">
+      <h2>${escapeHtml(t.name)} · 경기 결과</h2>
+      <p class="counter">경기 결과 기록 기능은 다음 단계에서 이어서 개발합니다.</p>
+    </div>
+    <div class="nav-row">
+      <button class="btn btn-ghost" id="btnBackToList">← 대회 목록</button>
+    </div>
+  `;
+  $('#btnBackToList').addEventListener('click', tRenderList);
+}
+
+/* ---------------- EDIT: STEP 1 - MEMBER SELECT ---------------- */
+function tOpenEditMembers(t){
+  tState.editing = t;
+  tState.memberSelection = [...(t.memberTags || [])];
+  tRenderEditMembers();
+}
+
+function tRenderEditMembers(){
+  const view = $('#tView');
+  const count = tState.memberSelection.length;
+
+  view.innerHTML = `
+    <div class="screen-intro">
+      <h2>${escapeHtml(tState.editing.name)} · 멤버 선택</h2>
+      <p class="counter">${count}명 선택됨 (인원 제한 없음)</p>
+    </div>
+    <div id="tMemberGrid" class="t-player-grid"></div>
+    <div class="nav-row">
+      <button class="btn btn-ghost" id="btnTMembersBack">← 대회 목록</button>
+      <button class="btn btn-primary" id="btnTMembersNext" ${count === 0 ? 'disabled' : ''}>다음</button>
+    </div>
+  `;
+
+  const grid = $('#tMemberGrid');
+  state.players.forEach(p => {
+    const card = document.createElement('div');
+    const isSelected = tState.memberSelection.includes(p.tag);
+    card.className = 'player-card t-full-row' + (isSelected ? ' checked' : '');
+    card.dataset.tag = p.tag;
+    card.innerHTML = `
+      <span class="checkbox">
+        <svg width="11" height="9" viewBox="0 0 11 9" fill="none">
+          <path d="M1 4.5L4 7.5L10 1.5" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </span>
+      <span class="player-name">${escapeHtml(p.tag)} ${getTierBadgeHtml(p.tier)}</span>
+    `;
+    card.addEventListener('click', () => {
+      const idx = tState.memberSelection.indexOf(p.tag);
+      if(idx === -1){
+        tState.memberSelection.push(p.tag);
+        card.classList.add('checked');
+      }else{
+        tState.memberSelection.splice(idx, 1);
+        card.classList.remove('checked');
+      }
+      const n = tState.memberSelection.length;
+      $('.counter').textContent = `${n}명 선택됨 (인원 제한 없음)`;
+      $('#btnTMembersNext').disabled = n === 0;
+    });
+    grid.appendChild(card);
+  });
+
+  $('#btnTMembersBack').addEventListener('click', tRenderList);
+  $('#btnTMembersNext').addEventListener('click', tOpenEditTeams);
+}
+
+/* ---------------- EDIT: STEP 2 - TEAM COUNT + ASSIGN ---------------- */
+function tOpenEditTeams(){
+  const t = tState.editing;
+  tState.teamCount = t.teamCount && t.teamCount >= 2 ? t.teamCount : 2;
+  tState.teamOf = {};
+  tState.memberSelection.forEach(tag => {
+    for(const [teamNum, tags] of Object.entries(t.teams || {})){
+      if(Array.isArray(tags) && tags.includes(tag)) tState.teamOf[tag] = Number(teamNum);
+    }
+  });
+  tRenderEditTeams();
+}
+
+function tRenderEditTeams(){
+  const view = $('#tView');
+  const teamBtnsHtml = Array.from({length:7}, (_, i) => i + 2).map(n => `
+    <button type="button" class="bo-btn t-team-count-btn ${tState.teamCount === n ? 'active' : ''}" data-n="${n}">${n}팀</button>
+  `).join('');
+
+  view.innerHTML = `
+    <div class="screen-intro">
+      <h2>${escapeHtml(tState.editing.name)} · 팀 구성</h2>
+      <p class="counter">총 몇 팀으로 나눌지 선택하고, 각 멤버를 팀에 배정하세요</p>
+    </div>
+    <div class="bo-select" id="tTeamCountSelect">${teamBtnsHtml}</div>
+    <div id="tAssignGrid" class="t-assign-grid"></div>
+    <div class="nav-row">
+      <button class="btn btn-ghost" id="btnTTeamsBack">← 멤버 선택</button>
+      <button class="btn btn-primary" id="btnTTeamsSave">저장</button>
+    </div>
+    <div id="tTeamsMsg" class="load-error hidden"></div>
+  `;
+
+  $$('.t-team-count-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      tState.teamCount = Number(btn.dataset.n);
+      // 범위를 벗어난 배정 해제
+      Object.keys(tState.teamOf).forEach(tag => {
+        if(tState.teamOf[tag] > tState.teamCount) delete tState.teamOf[tag];
+      });
+      tRenderEditTeams();
+    });
+  });
+
+  tRenderAssignGrid();
+
+  $('#btnTTeamsBack').addEventListener('click', tRenderEditMembers);
+  $('#btnTTeamsSave').addEventListener('click', tSaveTeamsAndReturn);
+}
+
+function tRenderAssignGrid(){
+  const grid = $('#tAssignGrid');
+  grid.innerHTML = '';
+  tState.memberSelection.forEach(tag => {
+    const p = getPlayerByTag(tag) || { tag, tier:'' };
+    const assigned = tState.teamOf[tag];
+
+    const row = document.createElement('div');
+    row.className = 't-assign-row';
+
+    const pillsHtml = Array.from({length: tState.teamCount}, (_, i) => i + 1).map(n => `
+      <button type="button" class="t-team-pill ${assigned === n ? 'active' : ''}" data-tag="${escapeAttrJs(tag)}" data-team="${n}">${n}</button>
+    `).join('');
+
+    row.innerHTML = `
+      <span class="t-player-label">${escapeHtml(tag)} ${getTierBadgeHtml(p.tier)}</span>
+      <div class="t-team-pills">${pillsHtml}</div>
+    `;
+    grid.appendChild(row);
+  });
+
+  grid.querySelectorAll('.t-team-pill').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const tag = btn.dataset.tag;
+      const n = Number(btn.dataset.team);
+      tState.teamOf[tag] = (tState.teamOf[tag] === n) ? undefined : n;
+      if(tState.teamOf[tag] === undefined) delete tState.teamOf[tag];
+      tRenderAssignGrid();
+    });
+  });
+}
+
+function escapeAttrJs(str){ return escapeHtml(str).replace(/"/g, '&quot;'); }
+
+async function tSaveTeamsAndReturn(){
+  const msgBox = $('#tTeamsMsg');
+  msgBox.classList.add('hidden');
+
+  const teams = {};
+  for(let n = 1; n <= tState.teamCount; n++) teams[n] = [];
+  tState.memberSelection.forEach(tag => {
+    const n = tState.teamOf[tag];
+    if(n) teams[n].push(tag);
+  });
+
+  const t = tState.editing;
+  t.memberTags = [...tState.memberSelection];
+  t.teamCount = tState.teamCount;
+  t.teams = teams;
+
+  const idx = tState.tournaments.findIndex(x => x.id === t.id);
+  if(idx !== -1) tState.tournaments[idx] = t;
+
+  const btn = $('#btnTTeamsSave');
+  btn.disabled = true;
+  btn.textContent = '저장 중...';
+  try{
+    await tSaveTournaments();
+    tRenderList();
+  }catch(err){
+    msgBox.classList.remove('hidden');
+    msgBox.innerHTML = `<strong>저장 실패</strong><br>${escapeHtml(err.message)}`;
+    btn.disabled = false;
+    btn.textContent = '저장';
+  }
+}
+
+
 
 /* ---------------- 대회모드 결과 저장 (GitHub 커밋) ---------------- */
 function tournamentApiUrl(cfg, path){

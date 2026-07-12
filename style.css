@@ -1721,12 +1721,15 @@ main{flex:1;}
    대회모드 (TOURNAMENT MODE)
    ============================================================ */
 .tournament-badge{
+  box-sizing:border-box;
   align-self:stretch;
+  height:auto;
+  margin:0;
   flex-shrink:0;
   display:flex;
   align-items:center;
   justify-content:center;
-  padding:16px 20px;
+  padding:0 22px;
   border-radius:22px;
   background:var(--glass-bg);
   backdrop-filter:var(--glass-blur);
@@ -1737,6 +1740,7 @@ main{flex:1;}
   font-family:var(--font-display);
   font-weight:700;
   font-size:13px;
+  line-height:1;
   letter-spacing:0.02em;
   cursor:pointer;
   transition:transform .15s ease, box-shadow .15s ease;
@@ -1837,9 +1841,149 @@ body.tournament-theme .tournament-badge{
   display:flex;
   align-items:stretch;
   gap:12px;
-  margin-bottom:0;
+  margin-bottom:28px;
 }
 .header-row .app-header{
   flex:1;
   min-width:0;
+  margin-bottom:0;
+}
+
+/* ---------------- 대회모드: 목록 / 편집 그리드 ---------------- */
+.t-loading{ color:var(--ink-soft); padding:20px 0; }
+.t-local-note{
+  font-size:12.5px;
+  color:#ff8f97;
+  background:rgba(255,44,60,0.08);
+  border:1px solid rgba(255,44,60,0.25);
+  border-radius:10px;
+  padding:10px 14px;
+  margin-bottom:16px;
+}
+.tournament-list{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  margin-bottom:16px;
+}
+.t-empty{
+  color:var(--ink-soft);
+  padding:24px 0;
+  text-align:center;
+}
+.tournament-box{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  width:100%;
+  padding:16px 20px;
+  border-radius:14px;
+  border:1px solid var(--line);
+  background:var(--bg-alt);
+  cursor:pointer;
+  transition:border-color .15s ease, transform .15s ease;
+}
+.tournament-box:hover{
+  border-color:var(--red);
+  transform:translateY(-1px);
+}
+.tournament-box-name{
+  font-family:var(--font-display);
+  font-weight:700;
+  font-size:15px;
+}
+.tournament-edit-btn{
+  flex-shrink:0;
+  padding:8px 16px;
+  border-radius:8px;
+  border:1px solid var(--line);
+  background:var(--bg);
+  color:var(--ink);
+  font-size:13px;
+  font-weight:600;
+  cursor:pointer;
+}
+.tournament-edit-btn:hover{
+  border-color:var(--red);
+  color:var(--red);
+}
+.tournament-add-row{
+  margin-bottom:20px;
+}
+.t-add-form{
+  display:flex;
+  gap:8px;
+  margin-top:10px;
+}
+.t-add-form.hidden{ display:none; }
+.t-add-form input{
+  flex:1;
+  padding:10px 12px;
+  border-radius:8px;
+  border:1px solid var(--line);
+  background:var(--bg);
+  color:var(--ink);
+  font-size:14px;
+}
+
+/* 멤버 선택: 한 줄에 한 명, 전체 너비 */
+.t-player-grid{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+  margin-bottom:20px;
+}
+.t-player-grid .player-card.t-full-row{
+  width:100%;
+  display:flex;
+  align-items:center;
+  gap:12px;
+}
+
+/* 팀 구성 그리드 */
+.t-assign-grid{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+  margin:16px 0 20px;
+}
+.t-assign-row{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  padding:12px 16px;
+  border-radius:12px;
+  border:1px solid var(--line);
+  background:var(--bg-alt);
+  flex-wrap:wrap;
+}
+.t-player-label{
+  font-weight:600;
+  font-size:14px;
+  display:flex;
+  align-items:center;
+  gap:6px;
+}
+.t-team-pills{
+  display:flex;
+  gap:6px;
+  flex-wrap:wrap;
+}
+.t-team-pill{
+  width:32px;
+  height:32px;
+  border-radius:8px;
+  border:1px solid var(--line);
+  background:var(--bg);
+  color:var(--ink-soft);
+  font-weight:700;
+  font-size:13px;
+  cursor:pointer;
+}
+.t-team-pill.active{
+  background:var(--red);
+  border-color:var(--red);
+  color:#fff;
 }
