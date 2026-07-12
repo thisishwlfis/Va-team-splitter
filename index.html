@@ -10,17 +10,19 @@
 
   <div class="app">
 
-    <header class="app-header">
-      <div class="logo-mark">⟡</div>
-      <h1>MatchSplit</h1>
+    <div class="header-row">
+      <header class="app-header">
+        <div class="logo-mark">⟡</div>
+        <h1>MatchSplit</h1>
+        <div class="step-track" id="stepTrack">
+          <span class="step active" data-step="1">01 선택</span>
+          <span class="step" data-step="2">02 팀배정</span>
+          <span class="step" data-step="3">03 게임설정</span>
+          <span class="step" data-step="4">04 결과</span>
+        </div>
+      </header>
       <button type="button" class="tournament-badge" id="btnTournamentMode">🏆 대회모드</button>
-      <div class="step-track" id="stepTrack">
-        <span class="step active" data-step="1">01 선택</span>
-        <span class="step" data-step="2">02 팀배정</span>
-        <span class="step" data-step="3">03 게임설정</span>
-        <span class="step" data-step="4">04 결과</span>
-      </div>
-    </header>
+    </div>
 
     <main id="app-main">
 

@@ -1721,6 +1721,8 @@ main{flex:1;}
    대회모드 (TOURNAMENT MODE)
    ============================================================ */
 .tournament-badge{
+  align-self:flex-start;
+  flex-shrink:0;
   padding:9px 16px;
   border-radius:10px;
   border:1px solid #7a1420;
@@ -1825,4 +1827,15 @@ body.tournament-theme .tournament-badge{
   background:linear-gradient(135deg,#ff2c3c,#8c0f1c);
   color:#fff;
   border-color:#ff2c3c;
+}
+
+.header-row{
+  display:flex;
+  align-items:flex-start;
+  gap:12px;
+  margin-bottom:0;
+}
+.header-row .app-header{
+  flex:1;
+  min-width:0;
 }
