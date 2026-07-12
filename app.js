@@ -1598,6 +1598,7 @@ function tOpenEditTeams(){
   const t = tState.editing;
   tState.teamCount = t.teamCount && t.teamCount >= 2 ? t.teamCount : 2;
   tState.teamOf = {};
+  tState.captains = Array.isArray(t.captains) ? [...t.captains] : [];
   tState.memberSelection.forEach(tag => {
     for(const [teamNum, tags] of Object.entries(t.teams || {})){
       if(Array.isArray(tags) && tags.includes(tag)) tState.teamOf[tag] = Number(teamNum);
@@ -1618,8 +1619,20 @@ function tRenderEditTeams(){
       <p class="counter">총 몇 팀으로 나눌지 선택하고, 각 멤버를 팀에 배정하세요</p>
     </div>
     <div class="bo-select" id="tTeamCountSelect">${teamBtnsHtml}</div>
-    <div id="tAssignGrid" class="t-assign-grid"></div>
-    <div id="tTeamPreview" class="t-team-preview"></div>
+
+    <div id="tTeamGrid" class="t-team-grid"></div>
+
+    <div class="sort-controls">
+      <button class="mini-btn" id="btnTSortDesc">티어 내림차순</button>
+      <button class="mini-btn" id="btnTSortAsc">티어 오름차순</button>
+    </div>
+    <div class="unassigned-wrap">
+      <div class="unassigned-label">멤버 후보</div>
+      <div id="tUnassignedScroll" class="t-unassigned-scroll">
+        <div id="tUnassignedList" class="unassigned-list"></div>
+      </div>
+    </div>
+
     <div class="nav-row">
       <button class="btn btn-ghost" id="btnTTeamsBack">← 멤버 선택</button>
       <button class="btn btn-primary" id="btnTTeamsSave">저장</button>
@@ -1630,7 +1643,6 @@ function tRenderEditTeams(){
   $$('.t-team-count-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       tState.teamCount = Number(btn.dataset.n);
-      // 범위를 벗어난 배정 해제
       Object.keys(tState.teamOf).forEach(tag => {
         if(tState.teamOf[tag] > tState.teamCount) delete tState.teamOf[tag];
       });
@@ -1638,78 +1650,130 @@ function tRenderEditTeams(){
     });
   });
 
-  tRenderAssignGrid();
+  $('#btnTSortDesc').addEventListener('click', () => tSortMembers(false));
+  $('#btnTSortAsc').addEventListener('click', () => tSortMembers(true));
 
   $('#btnTTeamsBack').addEventListener('click', tRenderEditMembers);
   $('#btnTTeamsSave').addEventListener('click', tSaveTeamsAndReturn);
+
+  tRenderTeamSetupBody();
 }
 
-function tRenderAssignGrid(){
-  const grid = $('#tAssignGrid');
-  grid.innerHTML = '';
-  tState.memberSelection.forEach(tag => {
-    const p = getPlayerByTag(tag) || { tag, tier:'' };
-    const assigned = tState.teamOf[tag];
-
-    const row = document.createElement('div');
-    row.className = 't-assign-row';
-
-    const pillsHtml = Array.from({length: tState.teamCount}, (_, i) => i + 1).map(n => `
-      <button type="button" class="t-team-pill ${assigned === n ? 'active' : ''}" data-tag="${escapeAttrJs(tag)}" data-team="${n}">${n}</button>
-    `).join('');
-
-    row.innerHTML = `
-      <span class="t-player-label">${escapeHtml(tag)} ${getTierBadgeHtml(p.tier)}</span>
-      <div class="t-team-pills">${pillsHtml}</div>
-    `;
-    grid.appendChild(row);
+function tSortMembers(asc){
+  tState.memberSelection.sort((a, b) => {
+    const sA = getTierScoreExact((getPlayerByTag(a) || {}).tier);
+    const sB = getTierScoreExact((getPlayerByTag(b) || {}).tier);
+    return asc ? sA - sB : sB - sA;
   });
-
-  grid.querySelectorAll('.t-team-pill').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const tag = btn.dataset.tag;
-      const n = Number(btn.dataset.team);
-      tState.teamOf[tag] = (tState.teamOf[tag] === n) ? undefined : n;
-      if(tState.teamOf[tag] === undefined) delete tState.teamOf[tag];
-      tRenderAssignGrid();
-    });
-  });
-
-  tRenderTeamPreview();
+  tRenderTeamSetupBody();
 }
 
-function tRenderTeamPreview(){
-  const box = $('#tTeamPreview');
-  if(!box) return;
+function tAssignMember(tag, teamNum){
+  if(teamNum === null){
+    delete tState.teamOf[tag];
+  }else{
+    tState.teamOf[tag] = teamNum;
+  }
+  tRenderTeamSetupBody();
+}
 
-  const cardsHtml = Array.from({length: tState.teamCount}, (_, i) => i + 1).map(n => {
+function tToggleCaptain(tag){
+  const idx = tState.captains.indexOf(tag);
+  if(idx === -1){
+    tState.captains.push(tag);
+  }else{
+    tState.captains.splice(idx, 1);
+  }
+  tRenderTeamSetupBody();
+}
+
+function tBuildCapBtnHtml(tag){
+  const isCap = tState.captains.includes(tag);
+  return `<button type="button" class="cap-btn t-cap-btn ${isCap ? 'active' : ''}" data-tag="${escapeAttrJs(tag)}">팀장</button>`;
+}
+
+function tRenderTeamSetupBody(){
+  /* ---- 팀 상자 그리드 (02 팀 배정과 동일한 tag-chip 디자인) ---- */
+  const teamGrid = $('#tTeamGrid');
+  teamGrid.innerHTML = '';
+
+  for(let n = 1; n <= tState.teamCount; n++){
     const tags = tState.memberSelection.filter(tag => tState.teamOf[tag] === n);
-    const playersHtml = tags.length
-      ? tags.map(tag => {
-          const p = getPlayerByTag(tag) || { tier:'' };
-          return `<div class="t-team-card-player">${escapeHtml(tag)} ${getTierBadgeHtml(p.tier)}</div>`;
-        }).join('')
-      : '<div class="t-team-card-empty">배정된 멤버 없음</div>';
 
-    let avgHtml = '평균 : -';
-    if(tags.length){
-      const sum = tags.reduce((acc, tag) => acc + getTierScoreExact((getPlayerByTag(tag) || {}).tier), 0);
-      const avgTier = getTierFromScore(sum / tags.length);
-      avgHtml = avgTier ? `평균 : <span>${avgTier}</span> ${getTierBadgeHtml(avgTier)}` : '평균 : -';
+    const col = document.createElement('div');
+    col.className = 't-team-col';
+
+    const sum = tags.reduce((acc, tag) => acc + getTierScoreExact((getPlayerByTag(tag) || {}).tier), 0);
+    const avgTier = tags.length ? getTierFromScore(sum / tags.length) : null;
+    const avgHtml = avgTier ? `평균 : <span>${avgTier}</span> ${getTierBadgeHtml(avgTier)}` : '평균 : -';
+
+    col.innerHTML = `
+      <span class="team-title">TEAM ${n}</span>
+      <div class="team-list" data-team="${n}"></div>
+      <div class="team-avg">${avgHtml}</div>
+    `;
+
+    const list = col.querySelector('.team-list');
+    if(tags.length === 0){
+      list.innerHTML = '<div class="t-team-card-empty">배정된 멤버 없음</div>';
+    }else{
+      tags.forEach(tag => {
+        const p = getPlayerByTag(tag) || { tier:'' };
+        const isCap = tState.captains.includes(tag);
+        const chip = document.createElement('div');
+        chip.className = 'tag-chip has-group';
+        chip.innerHTML = `
+          <div class="chip-top">
+            <span>${isCap ? '[팀장] ' : ''}${escapeHtml(tag)} ${getTierBadgeHtml(p.tier)}</span>
+            <button class="remove-btn" aria-label="제거">✕</button>
+          </div>
+          <div class="chip-bottom">
+            <span></span>
+            ${tBuildCapBtnHtml(tag)}
+          </div>
+        `;
+        chip.querySelector('.remove-btn').addEventListener('click', () => tAssignMember(tag, null));
+        chip.querySelector('.t-cap-btn').addEventListener('click', () => tToggleCaptain(tag));
+        list.appendChild(chip);
+      });
     }
 
-    return `
-      <div class="t-team-card">
-        <div class="t-team-card-head">
-          <span class="t-team-card-title">TEAM ${n}</span>
-          <span class="t-team-card-avg">${avgHtml}</span>
-        </div>
-        <div class="t-team-card-players">${playersHtml}</div>
-      </div>
-    `;
-  }).join('');
+    teamGrid.appendChild(col);
+  }
 
-  box.innerHTML = cardsHtml;
+  /* ---- 멤버 후보 (미배정, 스크롤 영역) ---- */
+  const pool = $('#tUnassignedList');
+  pool.innerHTML = '';
+  const unassignedTags = tState.memberSelection.filter(tag => !tState.teamOf[tag]);
+
+  if(unassignedTags.length === 0){
+    pool.innerHTML = '<div class="t-team-card-empty">모든 멤버가 팀에 배정되었습니다.</div>';
+  }else{
+    unassignedTags.forEach(tag => {
+      const p = getPlayerByTag(tag) || { tier:'' };
+      const teamBtnsHtml = Array.from({length: tState.teamCount}, (_, i) => i + 1).map(n => `
+        <button class="mini-btn team-btn" data-team="${n}">${n}팀</button>
+      `).join('');
+
+      const chip = document.createElement('div');
+      chip.className = 'unassigned-chip has-group';
+      chip.innerHTML = `
+        <div class="chip-top">
+          <span>${escapeHtml(tag)} ${getTierBadgeHtml(p.tier)}</span>
+          <div class="team-btns t-assign-teambtns">${teamBtnsHtml}</div>
+        </div>
+        <div class="chip-bottom">
+          <span></span>
+          ${tBuildCapBtnHtml(tag)}
+        </div>
+      `;
+      chip.querySelectorAll('.team-btn').forEach(btn => {
+        btn.addEventListener('click', () => tAssignMember(tag, Number(btn.dataset.team)));
+      });
+      chip.querySelector('.t-cap-btn').addEventListener('click', () => tToggleCaptain(tag));
+      pool.appendChild(chip);
+    });
+  }
 }
 
 function escapeAttrJs(str){ return escapeHtml(str).replace(/"/g, '&quot;'); }
@@ -1729,6 +1793,7 @@ async function tSaveTeamsAndReturn(){
   t.memberTags = [...tState.memberSelection];
   t.teamCount = tState.teamCount;
   t.teams = teams;
+  t.captains = [...tState.captains];
 
   const idx = tState.tournaments.findIndex(x => x.id === t.id);
   if(idx !== -1) tState.tournaments[idx] = t;

@@ -2047,3 +2047,71 @@ body.tournament-theme .bo-btn.active{
   font-size:12.5px;
   color:var(--ink-soft);
 }
+
+/* ---------------- 대회모드: 팀 상자 그리드 (02 팀 배정과 동일한 tag-chip 디자인) ---------------- */
+.t-team-grid{
+  display:grid;
+  grid-template-columns:repeat(3, 1fr);
+  gap:12px;
+  margin-bottom:20px;
+}
+@media (max-width:760px){
+  .t-team-grid{ grid-template-columns:repeat(2, 1fr); }
+}
+@media (max-width:480px){
+  .t-team-grid{ grid-template-columns:1fr; }
+}
+.t-team-col{
+  border:1.5px solid var(--line);
+  border-radius:var(--radius);
+  padding:14px;
+  min-height:120px;
+  background:var(--bg-alt);
+  display:flex;
+  flex-direction:column;
+}
+.t-team-col .team-title{
+  background:var(--red-tint);
+  color:var(--red-dark);
+  margin-bottom:10px;
+}
+.t-team-col .team-list{ margin-bottom:10px; }
+.t-team-card-empty{
+  font-size:12.5px;
+  color:var(--ink-soft);
+}
+
+/* 멤버 후보 스크롤 영역 (분리된 스크롤) */
+.t-unassigned-scroll{
+  max-height:360px;
+  overflow-y:auto;
+  padding:4px 4px 4px 0;
+  border:1px solid var(--line);
+  border-radius:var(--radius);
+  background:var(--bg);
+}
+.t-unassigned-scroll .unassigned-list{
+  padding:10px;
+}
+.t-assign-teambtns{
+  flex-wrap:wrap;
+  row-gap:4px;
+}
+
+/* 대회모드 다크테마: 팀 배정 칩/버튼류 색상 보정 */
+body.tournament-theme .tag-chip,
+body.tournament-theme .unassigned-chip{
+  background:var(--bg-alt);
+  border-color:var(--line);
+  color:var(--ink);
+}
+body.tournament-theme .mini-btn,
+body.tournament-theme .cap-btn,
+body.tournament-theme .group-btn{
+  background:var(--bg);
+  border-color:var(--line);
+  color:var(--ink-soft);
+}
+body.tournament-theme .cap-btn.active{
+  background:rgba(255,214,92,0.12);
+}
