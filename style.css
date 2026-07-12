@@ -131,8 +131,9 @@ main{flex:1;}
 
 /* PLAYER GRID */
 .player-grid{
-  display:grid;
-  grid-template-columns:repeat(4, 1fr);
+  display:flex;
+  flex-wrap:wrap;
+  justify-content:center;
   gap:10px;
   margin-bottom:28px;
 }
@@ -148,12 +149,13 @@ main{flex:1;}
   cursor:pointer;
   transition:border-color .15s, background .15s, transform .1s;
   user-select:none;
-  width:100%;
+  flex:0 0 auto;
+  width:calc(25% - 7.5px);
   max-width:100%;
   box-sizing:border-box;
 }
 @media (max-width:640px){
-  .player-grid{grid-template-columns:repeat(2, 1fr);}
+  .player-card{width:calc(50% - 5px);}
 }
 .player-card:hover{border-color:#D8D9DE;}
 .player-card.checked{
@@ -400,7 +402,7 @@ main{flex:1;}
   transition:all .2s;
 }
 .side-badge.attack{background:var(--red); color:#fff;}
-.side-badge.defense{background:var(--ink); color:#fff;}
+.side-badge.defense{background:#1B1C20; color:#fff;}
 .result-col .team-list{text-align:left;}
 
 /* GAME SETUP SCREEN */
@@ -535,7 +537,7 @@ main{flex:1;}
   white-space:nowrap;
 }
 .map-side-pill.attack{background:var(--red); color:#fff;}
-.map-side-pill.defense{background:var(--ink); color:#fff;}
+.map-side-pill.defense{background:#1B1C20; color:#fff;}
 
 .map-result-item.spinning{
   background:var(--bg-alt);
@@ -582,9 +584,9 @@ main{flex:1;}
   border-radius:10px 10px 0 0;
 }
 .map-set-winner-pill{
-  font-size:11px;
+  font-size:10px;
   font-weight:700;
-  padding:4px 10px;
+  padding:3px 8px;
   border-radius:999px;
   background:rgba(255,255,255,0.92);
   color:var(--ink);
@@ -634,7 +636,7 @@ main{flex:1;}
   color:var(--ink-soft);
 }
 .side-result-item.attack{background:var(--red); color:#fff;}
-.side-result-item.defense{background:var(--ink); color:#fff;}
+.side-result-item.defense{background:#1B1C20; color:#fff;}
 
 .final-result-capture{
   background:#fff;
@@ -716,7 +718,7 @@ main{flex:1;}
   color:var(--ink-soft);
 }
 .png-team-side.attack{background:var(--red); color:#fff;}
-.png-team-side.defense{background:var(--ink); color:#fff;}
+.png-team-side.defense{background:#1B1C20; color:#fff;}
 .png-player-list{
   display:flex;
   flex-direction:column;
