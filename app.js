@@ -1594,7 +1594,7 @@ function tBuildAddGamePanelHtml(){
         <span>경기 추가</span>
         <span class="counter" style="margin:0;">${draft.selected.length} / 2 팀 선택됨</span>
       </div>
-      <p class="counter">맞붙은 두 팀을 선택하세요</p>
+      <p class="counter" style="margin-bottom:10px;">맞붙은 두 팀을 선택하세요</p>
       <div class="bo-select">${matchupBtnsHtml}</div>
       ${statsHtml}
       ${winnerHtml}
