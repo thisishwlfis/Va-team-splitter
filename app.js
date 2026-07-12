@@ -1521,7 +1521,7 @@ function tTeamMembers(n){
 
 /* ---- 경기 추가 폼 (맞대결 팀 선택 → 선수별 K/D/A 입력 → 승리 팀 선택) ---- */
 function tOpenAddGameForm(){
-  tState.addGameDraft = { teamA:null, teamB:null, winner:null, stats:{} };
+  tState.addGameDraft = { selected:[], winner:null, stats:{} };
   tRenderResults();
 }
 
@@ -1534,13 +1534,16 @@ function tBuildAddGamePanelHtml(){
   const draft = tState.addGameDraft;
   if(!draft) return '';
   const teamCount = tState.currentResultEntry.teamCount || 2;
-  const teamBtnsHtml = (selectedVal, otherVal, slot) => Array.from({length:teamCount}, (_, i) => i + 1).map(n => `
-    <button type="button" class="mini-btn t-matchup-btn ${selectedVal === n ? 'active-1' : ''}" data-slot="${slot}" data-team="${n}" ${otherVal === n ? 'disabled' : ''}>TEAM ${n}</button>
+
+  const matchupBtnsHtml = Array.from({length:teamCount}, (_, i) => i + 1).map(n => `
+    <button type="button" class="bo-btn t-matchup-chip ${draft.selected.includes(n) ? 'active' : ''}" data-team="${n}">TEAM ${n}</button>
   `).join('');
 
   let statsHtml = '';
   let winnerHtml = '';
-  if(draft.teamA && draft.teamB){
+  const [teamA, teamB] = draft.selected;
+
+  if(teamA && teamB){
     const buildStatsCol = (teamNum) => {
       const tags = tTeamMembers(teamNum);
       const rowsHtml = tags.length === 0
@@ -1569,41 +1572,35 @@ function tBuildAddGamePanelHtml(){
     };
 
     statsHtml = `
-      <p class="counter" style="margin-top:16px;">각 선수의 K / D / A를 입력하세요</p>
+      <p class="counter" style="margin-top:18px;">각 선수의 K / D / A를 입력하세요</p>
       <div class="t-stats-columns">
-        ${buildStatsCol(draft.teamA)}
-        ${buildStatsCol(draft.teamB)}
+        ${buildStatsCol(teamA)}
+        ${buildStatsCol(teamB)}
       </div>
     `;
 
     winnerHtml = `
-      <p class="counter" style="margin-top:16px;">승리 팀을 선택하세요</p>
+      <p class="counter" style="margin-top:18px;">승리 팀을 선택하세요</p>
       <div class="bo-select">
-        <button type="button" class="bo-btn t-winner-btn ${draft.winner === draft.teamA ? 'active' : ''}" data-team="${draft.teamA}">TEAM ${draft.teamA} 승</button>
-        <button type="button" class="bo-btn t-winner-btn ${draft.winner === draft.teamB ? 'active' : ''}" data-team="${draft.teamB}">TEAM ${draft.teamB} 승</button>
+        <button type="button" class="bo-btn t-winner-btn ${draft.winner === teamA ? 'active' : ''}" data-team="${teamA}">TEAM ${teamA} 승</button>
+        <button type="button" class="bo-btn t-winner-btn ${draft.winner === teamB ? 'active' : ''}" data-team="${teamB}">TEAM ${teamB} 승</button>
       </div>
     `;
   }
 
   return `
     <div class="t-add-game-panel">
-      <div class="screen-intro" style="margin-bottom:6px;"><h3 style="font-size:15px; margin:0;">경기 추가</h3></div>
-      <p class="counter">맞붙은 두 팀을 선택하세요</p>
-      <div class="t-matchup-select">
-        <div class="t-matchup-col">
-          <span class="t-matchup-label">TEAM A</span>
-          <div class="bo-select">${teamBtnsHtml(draft.teamA, draft.teamB, 'A')}</div>
-        </div>
-        <div class="t-matchup-col">
-          <span class="t-matchup-label">TEAM B</span>
-          <div class="bo-select">${teamBtnsHtml(draft.teamB, draft.teamA, 'B')}</div>
-        </div>
+      <div class="t-add-game-panel-head">
+        <span>경기 추가</span>
+        <span class="counter" style="margin:0;">${draft.selected.length} / 2 팀 선택됨</span>
       </div>
+      <p class="counter">맞붙은 두 팀을 선택하세요</p>
+      <div class="bo-select">${matchupBtnsHtml}</div>
       ${statsHtml}
       ${winnerHtml}
       <div class="nav-row">
         <button class="btn btn-ghost" id="btnCancelAddGame">취소</button>
-        <button class="btn btn-primary" id="btnConfirmAddGame" ${(draft.teamA && draft.teamB && draft.winner) ? '' : 'disabled'}>경기 추가</button>
+        <button class="btn btn-primary" id="btnConfirmAddGame" ${(teamA && teamB && draft.winner) ? '' : 'disabled'}>경기 추가</button>
       </div>
     </div>
   `;
@@ -1613,12 +1610,16 @@ function tWireAddGamePanel(){
   const draft = tState.addGameDraft;
   if(!draft) return;
 
-  $$('.t-matchup-btn').forEach(btn => {
+  $$('.t-matchup-chip').forEach(btn => {
     btn.addEventListener('click', () => {
-      const slot = btn.dataset.slot;
       const n = Number(btn.dataset.team);
-      if(slot === 'A') draft.teamA = (draft.teamA === n) ? null : n;
-      else draft.teamB = (draft.teamB === n) ? null : n;
+      const idx = draft.selected.indexOf(n);
+      if(idx !== -1){
+        draft.selected.splice(idx, 1);
+      }else{
+        draft.selected.push(n);
+        if(draft.selected.length > 2) draft.selected.shift();
+      }
       draft.winner = null;
       draft.stats = {};
       tRenderResults();
@@ -1650,10 +1651,11 @@ function tWireAddGamePanel(){
 
 function tConfirmAddGame(){
   const draft = tState.addGameDraft;
-  if(!draft || !draft.teamA || !draft.teamB || !draft.winner) return;
+  const [teamA, teamB] = draft.selected;
+  if(!draft || !teamA || !teamB || !draft.winner) return;
 
   const stats = {};
-  [...tTeamMembers(draft.teamA), ...tTeamMembers(draft.teamB)].forEach(tag => {
+  [...tTeamMembers(teamA), ...tTeamMembers(teamB)].forEach(tag => {
     const s = draft.stats[tag] || {};
     stats[tag] = {
       k: Number(s.k) || 0,
@@ -1665,8 +1667,8 @@ function tConfirmAddGame(){
   const entry = tState.currentResultEntry;
   entry.games.push({
     game: entry.games.length + 1,
-    teamA: draft.teamA,
-    teamB: draft.teamB,
+    teamA,
+    teamB,
     winnerTeam: draft.winner,
     stats
   });
@@ -1750,7 +1752,7 @@ function tRenderResults(){
 
   const addPanelHtml = tState.addGameDraft
     ? tBuildAddGamePanelHtml()
-    : `<div class="nav-row nav-row-left"><button type="button" class="btn btn-ghost" id="btnOpenAddGame">+ 경기 추가</button></div>`;
+    : `<div class="nav-row nav-row-right"><button type="button" class="btn btn-primary" id="btnOpenAddGame">+ 경기 추가</button></div>`;
 
   view.innerHTML = `
     <div class="screen-intro">
