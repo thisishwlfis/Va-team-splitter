@@ -1761,17 +1761,17 @@ function tRenderResults(){
     </div>
 
     <div class="t-rank-section">
-      <span class="t-rank-title">🏆 실시간 팀 랭킹</span>
+      <span class="t-rank-title">실시간 팀 랭킹</span>
       <div class="t-rank-list">${teamRankHtml}</div>
     </div>
 
     <div class="t-rank-columns">
       <div class="t-rank-section">
-        <span class="t-rank-title">⚔ 킬 랭킹</span>
+        <span class="t-rank-title">킬 랭킹</span>
         <div class="t-rank-list">${buildPlayerRankHtml(killRanking, 'k')}</div>
       </div>
       <div class="t-rank-section">
-        <span class="t-rank-title">🤝 어시스트 랭킹</span>
+        <span class="t-rank-title">어시스트 랭킹</span>
         <div class="t-rank-list">${buildPlayerRankHtml(assistRanking, 'a')}</div>
       </div>
     </div>
