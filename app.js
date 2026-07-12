@@ -1410,13 +1410,11 @@ async function tRenderList(){
     </div>
     <div class="tournament-add-row">
       <button type="button" class="btn btn-ghost" id="btnTournamentAddToggle">+ 대회 추가</button>
+      <button class="btn btn-ghost" id="btnExitTournament">대회모드 나가기</button>
       <div id="tAddForm" class="t-add-form hidden">
         <input type="text" id="tNewName" placeholder="대회 이름 입력" />
         <button type="button" class="btn btn-primary" id="btnTournamentAddConfirm">추가</button>
       </div>
-    </div>
-    <div class="nav-row">
-      <button class="btn btn-ghost" id="btnExitTournament">대회모드 나가기</button>
     </div>
   `;
 
@@ -1469,18 +1467,159 @@ function tExitTournamentMode(){
   showScreen(1);
 }
 
-function tOpenResults(t){
+/* ---------------- 대회모드: 경기 결과 기록 ---------------- */
+async function tOpenResults(t){
   const view = $('#tView');
+  view.innerHTML = `<div class="t-loading">불러오는 중...</div>`;
+
+  const cfg = (typeof GitHubStore !== 'undefined') ? GitHubStore.getConfig() : null;
+  if(!cfg || !GitHubStore.hasConfig()){
+    view.innerHTML = `
+      <div class="screen-intro">
+        <h2>${escapeHtml(t.name)} · 경기 결과</h2>
+      </div>
+      <div class="load-error">GitHub 저장소 연결 정보가 없습니다.<br>admin.html에서 먼저 저장소를 연결해주세요.</div>
+      <div class="nav-row">
+        <button class="btn btn-ghost" id="btnBackToList">← 대회 목록</button>
+      </div>
+    `;
+    $('#btnBackToList').addEventListener('click', tRenderList);
+    return;
+  }
+
+  try{
+    const { sha, results } = await fetchTournamentResults(cfg);
+    tState.resultsSha = sha;
+    tState.allResults = results;
+    const existing = results.find(r => r.type === 'tournament' && r.tournamentId === t.id);
+    tState.currentResultEntry = existing
+      ? { ...existing, games: [...(existing.games || [])] }
+      : { id:`tresult-${t.id}`, type:'tournament', tournamentId:t.id, tournamentName:t.name, teams:{ ...(t.teams || {}) }, teamCount:t.teamCount || 2, games:[] };
+    tState.resultsDirty = false;
+    tRenderResults(t);
+  }catch(err){
+    view.innerHTML = `
+      <div class="screen-intro">
+        <h2>${escapeHtml(t.name)} · 경기 결과</h2>
+      </div>
+      <div class="load-error">불러오기 실패<br>${escapeHtml(err.message)}</div>
+      <div class="nav-row">
+        <button class="btn btn-ghost" id="btnBackToList">← 대회 목록</button>
+      </div>
+    `;
+    $('#btnBackToList').addEventListener('click', tRenderList);
+  }
+}
+
+function tRenderResults(t){
+  const view = $('#tView');
+  const entry = tState.currentResultEntry;
+  const teamCount = entry.teamCount || t.teamCount || 2;
+
+  const winsByTeam = {};
+  for(let n = 1; n <= teamCount; n++) winsByTeam[n] = 0;
+  entry.games.forEach(g => { if(winsByTeam[g.winnerTeam] !== undefined) winsByTeam[g.winnerTeam]++; });
+
+  const scoreHtml = Array.from({length: teamCount}, (_, i) => i + 1).map(n => `
+    <div class="t-score-box">
+      <span class="team-title">TEAM ${n}</span>
+      <span class="t-score-num">${winsByTeam[n]}승</span>
+    </div>
+  `).join('');
+
+  const gamesHtml = entry.games.length === 0
+    ? '<div class="t-team-card-empty">아직 기록된 경기가 없습니다.</div>'
+    : entry.games.map((g, idx) => `
+      <div class="t-game-row">
+        <span>게임 ${idx + 1}</span>
+        <span class="t-game-winner">TEAM ${g.winnerTeam} 승리</span>
+        <button type="button" class="row-delete t-game-delete" data-idx="${idx}" aria-label="삭제">✕</button>
+      </div>
+    `).join('');
+
+  const addBtnsHtml = Array.from({length: teamCount}, (_, i) => i + 1).map(n => `
+    <button type="button" class="mini-btn t-add-game-btn" data-team="${n}">TEAM ${n} 승리 기록</button>
+  `).join('');
+
   view.innerHTML = `
     <div class="screen-intro">
       <h2>${escapeHtml(t.name)} · 경기 결과</h2>
-      <p class="counter">경기 결과 기록 기능은 다음 단계에서 이어서 개발합니다.</p>
+      <p class="counter">각 경기가 끝날 때마다 승리 팀을 눌러 기록하고, 완료되면 저장하세요.</p>
     </div>
+
+    <div class="t-score-row">${scoreHtml}</div>
+
+    <div class="t-games-list">${gamesHtml}</div>
+
+    <div class="t-add-game-row">${addBtnsHtml}</div>
+
     <div class="nav-row">
       <button class="btn btn-ghost" id="btnBackToList">← 대회 목록</button>
+      <button class="btn btn-primary" id="btnSaveResults">결과 저장</button>
     </div>
+    <div id="tResultsMsg" class="load-error hidden"></div>
   `;
-  $('#btnBackToList').addEventListener('click', tRenderList);
+
+  $('#btnBackToList').addEventListener('click', () => {
+    if(tState.resultsDirty && !confirm('저장하지 않은 변경사항이 있습니다. 나가시겠습니까?')) return;
+    tRenderList();
+  });
+
+  $$('.t-add-game-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      entry.games.push({ game: entry.games.length + 1, winnerTeam: Number(btn.dataset.team) });
+      tState.resultsDirty = true;
+      tRenderResults(t);
+    });
+  });
+
+  $$('.t-game-delete').forEach(btn => {
+    btn.addEventListener('click', () => {
+      entry.games.splice(Number(btn.dataset.idx), 1);
+      entry.games.forEach((g, i) => { g.game = i + 1; });
+      tState.resultsDirty = true;
+      tRenderResults(t);
+    });
+  });
+
+  $('#btnSaveResults').addEventListener('click', () => tSaveResults(t));
+}
+
+async function tSaveResults(t){
+  const msgBox = $('#tResultsMsg');
+  const btn = $('#btnSaveResults');
+  msgBox.classList.add('hidden');
+  btn.disabled = true;
+  btn.textContent = '저장 중...';
+
+  try{
+    const cfg = GitHubStore.getConfig();
+    const entry = tState.currentResultEntry;
+    entry.updatedAt = new Date().toISOString();
+
+    const others = (tState.allResults || []).filter(r => !(r.type === 'tournament' && r.tournamentId === t.id));
+    const merged = [...others, entry];
+
+    const result = await saveTournamentResults(cfg, merged, tState.resultsSha);
+    tState.resultsSha = result.content ? result.content.sha : tState.resultsSha;
+    tState.allResults = merged;
+    tState.resultsDirty = false;
+
+    msgBox.classList.remove('hidden');
+    msgBox.style.background = '#F3FBF4';
+    msgBox.style.borderColor = '#BEE3C4';
+    msgBox.style.color = '#1E7A32';
+    msgBox.innerHTML = '<strong>저장 완료.</strong> data/tournament-results.json에 반영되었습니다.';
+  }catch(err){
+    msgBox.classList.remove('hidden');
+    msgBox.style.background = '';
+    msgBox.style.borderColor = '';
+    msgBox.style.color = '';
+    msgBox.innerHTML = `<strong>저장 실패</strong><br>${escapeHtml(err.message)}`;
+  }finally{
+    btn.disabled = false;
+    btn.textContent = '결과 저장';
+  }
 }
 
 /* ---------------- EDIT: STEP 1 - MEMBER SELECT ---------------- */
