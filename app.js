@@ -199,7 +199,7 @@ function renderPlayerGrid(){
     searchWrap.id = 'searchContainer';
     searchWrap.className = 'search-container';
     searchWrap.innerHTML = `
-      <input type="text" id="playerSearch" placeholder="닉네임 또는 실명 검색..." autocomplete="off" />
+      <input type="text" id="playerSearch" class="player-search-input" placeholder="닉네임 또는 실명 검색..." autocomplete="off" />
       <div id="searchDropdown" class="search-dropdown hidden"></div>
     `;
     grid.parentNode.insertBefore(searchWrap, grid);
@@ -1500,7 +1500,7 @@ function tRenderEditMembers(){
       <p class="counter" id="tMemberCounter">${count}명 선택됨 (인원 제한 없음)</p>
     </div>
     <div class="search-container">
-      <input type="text" id="tPlayerSearch" placeholder="닉네임 또는 실명 검색..." autocomplete="off" />
+      <input type="text" id="tPlayerSearch" class="player-search-input" placeholder="닉네임 또는 실명 검색..." autocomplete="off" />
       <div id="tSearchDropdown" class="search-dropdown hidden"></div>
     </div>
     <div id="tMemberGrid" class="player-grid"></div>

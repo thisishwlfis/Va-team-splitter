@@ -1144,7 +1144,7 @@ main{flex:1;}
   max-width: 480px;
   margin: 0 auto 28px auto;
 }
-#playerSearch {
+.player-search-input {
   width: 100%;
   padding: 16px 24px;
   font-family: var(--font-body);
@@ -1157,12 +1157,12 @@ main{flex:1;}
   outline: none;
   transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
 }
-#playerSearch:focus {
+.player-search-input:focus {
   background: var(--bg);
   border-color: var(--red);
   box-shadow: 0 0 0 4px var(--red-tint);
 }
-#playerSearch::placeholder {
+.player-search-input::placeholder {
   color: #A0A1AB;
   font-weight: 500;
 }
