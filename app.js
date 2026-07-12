@@ -1536,7 +1536,7 @@ function tTeamMembers(n){
 
 /* ---- 경기 추가 폼 (맞대결 팀 선택 → 선수별 K/D/A 입력 → 승리 팀 선택) ---- */
 function tOpenAddGameForm(){
-  tState.addGameDraft = { selected:[], winner:null, stats:{}, bo:null, teamMaps:{ 1:[], 2:[] }, mapAssignments:[] };
+  tState.addGameDraft = { selected:[], winner:null, stats:{}, bo:null, teamMaps:{ 1:[], 2:[] }, mapAssignments:[], setWinners:{}, pendingSetWinners:{}, expandedSet:null };
   tRenderResults();
 }
 
@@ -1595,25 +1595,11 @@ function tBuildAddGamePanelHtml(){
     `;
   }
 
-  if(draft.mapAssignments.length > 0){
-    const rowsHtml = draft.mapAssignments.map(item => `
-      <div class="map-result-item revealed" style="${buildMapCardBackground(item.map)}">
-        <span class="map-result-game">${item.game}세트</span>
-        <span class="map-result-name">${escapeHtml(item.map)}</span>
-        <span class="map-result-badge map-result-badge-${item.source}">${MAP_SOURCE_LABEL[item.source]}</span>
-        ${buildSidePillsHtml(item)}
-      </div>
-    `).join('');
-    mapResultHtml = `
-      <p class="counter" style="margin-top:18px; margin-bottom:10px;">맵 / 진영 배정 결과</p>
-      <div class="map-result-list">${rowsHtml}</div>
-      <div class="nav-row nav-row-right">
-        <button type="button" class="mini-btn" id="btnTAddResetMaps">맵 다시 선택</button>
-      </div>
-    `;
-  }
-
   if(teamA && teamB && draft.mapAssignments.length > 0){
+    if(!draft.setWinners) draft.setWinners = {};
+    if(!draft.pendingSetWinners) draft.pendingSetWinners = {};
+    if(draft.expandedSet === undefined) draft.expandedSet = null;
+
     const buildStatsCol = (teamNum, setIdx) => {
       const tags = tTeamMembers(teamNum);
       const rowsHtml = tags.length === 0
@@ -1642,15 +1628,55 @@ function tBuildAddGamePanelHtml(){
       `;
     };
 
-    const setBlocksHtml = Array.from({length:draft.bo}, (_, setIdx) => `
-      <p class="counter" style="margin-top:18px; margin-bottom:10px;">${setIdx + 1}세트 (${escapeHtml((draft.mapAssignments[setIdx] || {}).map || '')}) K / D / A</p>
-      <div class="t-stats-columns">
-        ${buildStatsCol(teamA, setIdx)}
-        ${buildStatsCol(teamB, setIdx)}
-      </div>
-    `).join('');
+    const boxesHtml = draft.mapAssignments.map(item => {
+      const setIdx = item.game - 1;
+      const isOpen = draft.expandedSet === setIdx;
+      const savedWinner = draft.setWinners[setIdx];
+      const pendingWinner = draft.pendingSetWinners[setIdx] || savedWinner || null;
+      const winnerPillHtml = savedWinner
+        ? `<span class="map-set-winner-pill">TEAM ${savedWinner} 승</span>`
+        : '';
 
-    statsHtml = setBlocksHtml;
+      const panelHtml = isOpen ? `
+        <div class="t-set-kda-panel">
+          <p class="counter" style="margin:12px 0 8px;">${item.game}세트 (${escapeHtml(item.map)}) K / D / A</p>
+          <div class="t-stats-columns">
+            ${buildStatsCol(teamA, setIdx)}
+            ${buildStatsCol(teamB, setIdx)}
+          </div>
+          <p class="counter" style="margin:14px 0 8px;">이 세트를 가져간 팀을 선택하세요</p>
+          <div class="bo-select">
+            <button type="button" class="bo-btn t-set-winner-btn ${pendingWinner === teamA ? 'active' : ''}" data-set="${setIdx}" data-team="${teamA}">TEAM ${teamA} 승</button>
+            <button type="button" class="bo-btn t-set-winner-btn ${pendingWinner === teamB ? 'active' : ''}" data-set="${setIdx}" data-team="${teamB}">TEAM ${teamB} 승</button>
+          </div>
+          <div class="nav-row nav-row-right" style="margin-top:12px;">
+            <button type="button" class="btn btn-primary t-set-save-btn" data-set="${setIdx}" ${pendingWinner ? '' : 'disabled'}>이 세트 저장</button>
+          </div>
+        </div>
+      ` : '';
+
+      return `
+        <div class="t-map-box-wrap ${isOpen ? 'expanded' : ''}">
+          <div class="map-result-item revealed t-map-box" data-set="${setIdx}" style="${buildMapCardBackground(item.map)}">
+            <span class="map-result-game">${item.game}세트</span>
+            <span class="map-result-name">${escapeHtml(item.map)}</span>
+            <span class="map-result-badge map-result-badge-${item.source}">${MAP_SOURCE_LABEL[item.source]}</span>
+            ${buildSidePillsHtml(item)}
+            ${winnerPillHtml}
+          </div>
+          ${panelHtml}
+        </div>
+      `;
+    }).join('');
+
+    mapResultHtml = `
+      <p class="counter" style="margin-top:18px; margin-bottom:2px;">맵 / 진영 배정 결과</p>
+      <p class="hint-text" style="margin-bottom:10px;">박스를 클릭하면 K/D/A를 기록할 수 있어요</p>
+      <div class="map-result-list">${boxesHtml}</div>
+      <div class="nav-row nav-row-right">
+        <button type="button" class="mini-btn" id="btnTAddResetMaps">맵 다시 선택</button>
+      </div>
+    `;
 
     winnerHtml = `
       <p class="counter" style="margin-bottom:10px;
@@ -1702,6 +1728,9 @@ function tWireAddGamePanel(){
       draft.bo = null;
       draft.teamMaps = { 1:[], 2:[] };
       draft.mapAssignments = [];
+      draft.setWinners = {};
+      draft.pendingSetWinners = {};
+      draft.expandedSet = null;
       tRenderResults();
     });
   });
@@ -1713,6 +1742,9 @@ function tWireAddGamePanel(){
       draft.mapAssignments = [];
       draft.stats = {};
       draft.winner = null;
+      draft.setWinners = {};
+      draft.pendingSetWinners = {};
+      draft.expandedSet = null;
       tRenderResults();
     });
   });
@@ -1733,9 +1765,44 @@ function tWireAddGamePanel(){
       draft.mapAssignments = [];
       draft.stats = {};
       draft.winner = null;
+      draft.setWinners = {};
+      draft.pendingSetWinners = {};
+      draft.expandedSet = null;
       tRenderResults();
     });
   }
+
+  $$('.t-map-box').forEach(box => {
+    box.addEventListener('click', () => {
+      const setIdx = Number(box.dataset.set);
+      draft.expandedSet = (draft.expandedSet === setIdx) ? null : setIdx;
+      tRenderResults();
+    });
+  });
+
+  $$('.t-set-winner-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const setIdx = Number(btn.dataset.set);
+      const team = Number(btn.dataset.team);
+      if(!draft.pendingSetWinners) draft.pendingSetWinners = {};
+      draft.pendingSetWinners[setIdx] = team;
+      tRenderResults();
+    });
+  });
+
+  $$('.t-set-save-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const setIdx = Number(btn.dataset.set);
+      const team = draft.pendingSetWinners && draft.pendingSetWinners[setIdx];
+      if(!team) return;
+      if(!draft.setWinners) draft.setWinners = {};
+      draft.setWinners[setIdx] = team;
+      draft.expandedSet = null;
+      tRenderResults();
+    });
+  });
 
   $$('.t-kda-input').forEach(inp => {
     inp.addEventListener('input', () => {
@@ -1919,6 +1986,7 @@ function tConfirmAddGame(){
     bo: draft.bo,
     mapAssignments: draft.mapAssignments,
     winnerTeam: draft.winner,
+    setWinners: { ...(draft.setWinners || {}) },
     stats,
     setStats
   });
