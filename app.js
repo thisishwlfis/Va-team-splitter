@@ -226,7 +226,22 @@ function renderPlayerGrid(){
     card.addEventListener('click', () => toggleSelect(p.tag, card));
     grid.appendChild(card);
   });
+  equalizePlayerCardWidths(grid);
   updateSelectUI();
+}
+
+/* 카드 폭을 가장 긴 콘텐츠 기준으로 통일 (그리드는 flex + justify-content:center 로
+   마지막 줄이 남더라도 가운데 정렬됨) */
+function equalizePlayerCardWidths(grid){
+  const cards = Array.from(grid.querySelectorAll('.player-card'));
+  if(!cards.length) return;
+  cards.forEach(c => { c.style.width = 'max-content'; });
+  let maxW = 0;
+  cards.forEach(c => { maxW = Math.max(maxW, c.getBoundingClientRect().width); });
+  cards.forEach(c => { c.style.width = ''; });
+  maxW = Math.ceil(maxW);
+  grid.style.setProperty('--player-card-w', maxW + 'px');
+  grid.style.setProperty('--player-card-w-sm', maxW + 'px');
 }
 
 function toggleSelect(tag, cardEl){
@@ -1286,7 +1301,7 @@ function enterTournamentMode(){
     state.tournamentMode = true;
     $('#btnTournamentMode').classList.add('hidden');
     $('#btnSaveTournamentResult').classList.remove('hidden');
-  }, 430);
+  }, 550);
 
   appEl.addEventListener('animationend', () => {
     appEl.classList.remove('tournament-flip');

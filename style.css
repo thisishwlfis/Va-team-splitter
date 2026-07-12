@@ -131,13 +131,11 @@ main{flex:1;}
 
 /* PLAYER GRID */
 .player-grid{
-  display:grid;
-  grid-template-columns:repeat(4, 1fr);
+  display:flex;
+  flex-wrap:wrap;
+  justify-content:center;
   gap:10px;
   margin-bottom:28px;
-}
-@media (max-width:640px){
-  .player-grid{grid-template-columns:repeat(2, 1fr);}
 }
 
 .player-card{
@@ -151,6 +149,13 @@ main{flex:1;}
   cursor:pointer;
   transition:border-color .15s, background .15s, transform .1s;
   user-select:none;
+  flex:0 0 auto;
+  width:var(--player-card-w, calc(25% - 7.5px));
+  max-width:100%;
+  box-sizing:border-box;
+}
+@media (max-width:640px){
+  .player-card{width:var(--player-card-w-sm, calc(50% - 5px));}
 }
 .player-card:hover{border-color:#D8D9DE;}
 .player-card.checked{
@@ -1754,54 +1759,76 @@ main{flex:1;}
 /* login modal */
 .tournament-login-overlay{
   position:fixed; inset:0;
-  background:rgba(0,0,0,0.72);
+  background:rgba(20,10,10,0.45);
   display:flex; align-items:center; justify-content:center;
   z-index:999;
-  backdrop-filter:blur(4px);
+  backdrop-filter:blur(6px);
 }
 .tournament-login-overlay.hidden{ display:none; }
 .tournament-login-box{
   width:320px;
-  background:linear-gradient(160deg,#1a0304,#0c0102);
-  border:1px solid #7a1420;
+  background:linear-gradient(160deg,#ffffff,#fff5f6);
+  border:1px solid #ffd3d7;
   border-radius:16px;
   padding:26px;
-  color:#f4f4f6;
-  box-shadow:0 20px 60px rgba(0,0,0,0.6);
+  color:#241417;
+  box-shadow:0 20px 60px rgba(120,10,20,0.22);
 }
 .tournament-login-box h3{
   margin:0 0 6px;
   font-family:var(--font-display);
-  color:#ff5460;
+  color:#e11d2e;
 }
 .tournament-login-box input{
   width:100%;
   margin-top:14px;
   padding:11px 12px;
   border-radius:8px;
-  border:1px solid #5a1018;
-  background:#150506;
-  color:#fff;
+  border:1.5px solid #f0c3c7;
+  background:#fffbfb;
+  color:#241417;
   font-size:14px;
 }
 .tournament-login-box input:focus{
   outline:none;
   border-color:#e11d2e;
+  box-shadow:0 0 0 3px rgba(225,29,46,0.12);
 }
 .tournament-login-box .nav-row{ margin-top:16px; }
 
-/* diagonal top-to-bottom 3D flip transition */
+/* 대회모드 진입 3D 전환 - 다단계 회전 + 글로우 + 블러로 고급스러운 연출 */
 .tournament-flip{
-  animation: tournamentFlip 0.9s cubic-bezier(.45,0,.2,1);
+  animation: tournamentFlip 1.15s cubic-bezier(.65,0,.35,1);
   transform-style: preserve-3d;
-  perspective: 1400px;
+  perspective: 1800px;
   backface-visibility:hidden;
+  will-change: transform, filter;
 }
 @keyframes tournamentFlip{
-  0%   { transform: rotate3d(1,1,0,0deg);   filter:brightness(1); }
-  48%  { transform: rotate3d(1,1,0,88deg);  filter:brightness(0.3); }
-  52%  { transform: rotate3d(1,1,0,-88deg); filter:brightness(0.3); }
-  100% { transform: rotate3d(1,1,0,0deg);   filter:brightness(1); }
+  0%{
+    transform: perspective(1800px) rotate3d(1,1,0,0deg) scale(1);
+    filter: brightness(1) blur(0px) saturate(1);
+  }
+  22%{
+    transform: perspective(1800px) rotate3d(1,0.6,0,38deg) scale(0.97);
+    filter: brightness(1.08) blur(0px) saturate(1.15);
+  }
+  48%{
+    transform: perspective(1800px) rotate3d(1,0.6,0,90deg) scale(0.9);
+    filter: brightness(0.15) blur(4px) saturate(1.4) drop-shadow(0 0 60px rgba(255,44,60,0.55));
+  }
+  52%{
+    transform: perspective(1800px) rotate3d(1,0.6,0,-90deg) scale(0.9);
+    filter: brightness(0.15) blur(4px) saturate(1.4) drop-shadow(0 0 60px rgba(255,44,60,0.55));
+  }
+  78%{
+    transform: perspective(1800px) rotate3d(1,0.6,0,-30deg) scale(0.97);
+    filter: brightness(1.08) blur(0px) saturate(1.15);
+  }
+  100%{
+    transform: perspective(1800px) rotate3d(1,0.6,0,0deg) scale(1);
+    filter: brightness(1) blur(0px) saturate(1);
+  }
 }
 
 /* black + red theme */
