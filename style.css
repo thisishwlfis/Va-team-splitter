@@ -1796,39 +1796,71 @@ main{flex:1;}
 }
 .tournament-login-box .nav-row{ margin-top:16px; }
 
-/* 대회모드 진입 3D 전환 - 다단계 회전 + 글로우 + 블러로 고급스러운 연출 */
+/* 대회모드 진입 3D 전환 - 카드가 축을 중심으로 뒤로 넘어가듯 회전하며
+   깊이(translateZ)와 블러/글로우가 함께 움직이는 고급 연출 */
 .tournament-flip{
-  animation: tournamentFlip 1.15s cubic-bezier(.65,0,.35,1);
+  animation: tournamentFlip 1.2s cubic-bezier(.76,0,.24,1);
   transform-style: preserve-3d;
-  perspective: 1800px;
+  perspective: 2200px;
   backface-visibility:hidden;
   will-change: transform, filter;
 }
 @keyframes tournamentFlip{
   0%{
-    transform: perspective(1800px) rotate3d(1,1,0,0deg) scale(1);
+    transform: perspective(2200px) translateZ(0) rotateX(0deg) scale(1);
     filter: brightness(1) blur(0px) saturate(1);
   }
-  22%{
-    transform: perspective(1800px) rotate3d(1,0.6,0,38deg) scale(0.97);
-    filter: brightness(1.08) blur(0px) saturate(1.15);
+  35%{
+    transform: perspective(2200px) translateZ(-120px) rotateX(58deg) scale(0.92);
+    filter: brightness(0.7) blur(1px) saturate(1.2);
   }
-  48%{
-    transform: perspective(1800px) rotate3d(1,0.6,0,90deg) scale(0.9);
-    filter: brightness(0.15) blur(4px) saturate(1.4) drop-shadow(0 0 60px rgba(255,44,60,0.55));
+  50%{
+    transform: perspective(2200px) translateZ(-260px) rotateX(90deg) scale(0.86);
+    filter: brightness(0.08) blur(6px) saturate(1.5) drop-shadow(0 0 90px rgba(255,44,60,0.65));
   }
-  52%{
-    transform: perspective(1800px) rotate3d(1,0.6,0,-90deg) scale(0.9);
-    filter: brightness(0.15) blur(4px) saturate(1.4) drop-shadow(0 0 60px rgba(255,44,60,0.55));
-  }
-  78%{
-    transform: perspective(1800px) rotate3d(1,0.6,0,-30deg) scale(0.97);
-    filter: brightness(1.08) blur(0px) saturate(1.15);
+  65%{
+    transform: perspective(2200px) translateZ(-120px) rotateX(-58deg) scale(0.92);
+    filter: brightness(0.7) blur(1px) saturate(1.2);
   }
   100%{
-    transform: perspective(1800px) rotate3d(1,0.6,0,0deg) scale(1);
+    transform: perspective(2200px) translateZ(0) rotateX(0deg) scale(1);
     filter: brightness(1) blur(0px) saturate(1);
   }
+}
+
+/* 전환 순간 화면을 가로지르는 라이트 스윕 */
+.tournament-light-sweep{
+  position:fixed;
+  inset:0;
+  z-index:1200;
+  pointer-events:none;
+  overflow:hidden;
+}
+.tournament-light-sweep::before{
+  content:'';
+  position:absolute;
+  top:-20%;
+  left:50%;
+  width:38%;
+  height:140%;
+  background:linear-gradient(100deg,
+    transparent 0%,
+    rgba(255,255,255,0.0) 32%,
+    rgba(255,120,130,0.55) 47%,
+    rgba(255,44,60,0.9) 50%,
+    rgba(255,120,130,0.55) 53%,
+    rgba(255,255,255,0.0) 68%,
+    transparent 100%);
+  transform:translateX(-260%) rotate(14deg);
+  animation: tournamentSweep 1.2s cubic-bezier(.76,0,.24,1);
+  filter: blur(2px);
+}
+@keyframes tournamentSweep{
+  0%   { transform:translateX(-260%) rotate(14deg); opacity:0; }
+  38%  { opacity:1; }
+  50%  { transform:translateX(0%) rotate(14deg); opacity:1; }
+  62%  { opacity:1; }
+  100% { transform:translateX(260%) rotate(14deg); opacity:0; }
 }
 
 /* black + red theme */

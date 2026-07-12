@@ -1295,13 +1295,18 @@ function enterTournamentMode(){
   const appEl = $('.app');
   appEl.classList.add('tournament-flip');
 
+  const sweep = document.createElement('div');
+  sweep.className = 'tournament-light-sweep';
+  document.body.appendChild(sweep);
+  sweep.addEventListener('animationend', () => sweep.remove(), { once:true });
+
   // 애니메이션 중간(화면이 뒤집혀 안 보이는 시점)에 테마를 전환해 자연스럽게 보이도록 함
   setTimeout(() => {
     document.body.classList.add('tournament-theme');
     state.tournamentMode = true;
     $('#btnTournamentMode').classList.add('hidden');
     $('#btnSaveTournamentResult').classList.remove('hidden');
-  }, 550);
+  }, 600);
 
   appEl.addEventListener('animationend', () => {
     appEl.classList.remove('tournament-flip');
