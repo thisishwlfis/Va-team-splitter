@@ -1796,71 +1796,15 @@ main{flex:1;}
 }
 .tournament-login-box .nav-row{ margin-top:16px; }
 
-/* 대회모드 진입 3D 전환 - 카드가 축을 중심으로 뒤로 넘어가듯 회전하며
-   깊이(translateZ)와 블러/글로우가 함께 움직이는 고급 연출 */
+/* 대회모드 진입 전환 - 단순 페이드 아웃/인 */
 .tournament-flip{
-  animation: tournamentFlip 1.2s cubic-bezier(.76,0,.24,1);
-  transform-style: preserve-3d;
-  perspective: 2200px;
-  backface-visibility:hidden;
-  will-change: transform, filter;
+  animation: tournamentFade 0.7s ease;
 }
-@keyframes tournamentFlip{
-  0%{
-    transform: perspective(2200px) translateZ(0) rotateX(0deg) scale(1);
-    filter: brightness(1) blur(0px) saturate(1);
-  }
-  35%{
-    transform: perspective(2200px) translateZ(-120px) rotateX(58deg) scale(0.92);
-    filter: brightness(0.7) blur(1px) saturate(1.2);
-  }
-  50%{
-    transform: perspective(2200px) translateZ(-260px) rotateX(90deg) scale(0.86);
-    filter: brightness(0.08) blur(6px) saturate(1.5) drop-shadow(0 0 90px rgba(255,44,60,0.65));
-  }
-  65%{
-    transform: perspective(2200px) translateZ(-120px) rotateX(-58deg) scale(0.92);
-    filter: brightness(0.7) blur(1px) saturate(1.2);
-  }
-  100%{
-    transform: perspective(2200px) translateZ(0) rotateX(0deg) scale(1);
-    filter: brightness(1) blur(0px) saturate(1);
-  }
-}
-
-/* 전환 순간 화면을 가로지르는 라이트 스윕 */
-.tournament-light-sweep{
-  position:fixed;
-  inset:0;
-  z-index:1200;
-  pointer-events:none;
-  overflow:hidden;
-}
-.tournament-light-sweep::before{
-  content:'';
-  position:absolute;
-  top:-20%;
-  left:50%;
-  width:38%;
-  height:140%;
-  background:linear-gradient(100deg,
-    transparent 0%,
-    rgba(255,255,255,0.0) 32%,
-    rgba(255,120,130,0.55) 47%,
-    rgba(255,44,60,0.9) 50%,
-    rgba(255,120,130,0.55) 53%,
-    rgba(255,255,255,0.0) 68%,
-    transparent 100%);
-  transform:translateX(-260%) rotate(14deg);
-  animation: tournamentSweep 1.2s cubic-bezier(.76,0,.24,1);
-  filter: blur(2px);
-}
-@keyframes tournamentSweep{
-  0%   { transform:translateX(-260%) rotate(14deg); opacity:0; }
-  38%  { opacity:1; }
-  50%  { transform:translateX(0%) rotate(14deg); opacity:1; }
-  62%  { opacity:1; }
-  100% { transform:translateX(260%) rotate(14deg); opacity:0; }
+@keyframes tournamentFade{
+  0%{ opacity:1; }
+  48%{ opacity:0; }
+  52%{ opacity:0; }
+  100%{ opacity:1; }
 }
 
 /* black + red theme */
@@ -2265,6 +2209,13 @@ body.tournament-theme .group-btn.active{
   flex:1;
   color:var(--ink);
 }
+.t-game-maps{
+  display:block;
+  margin-top:3px;
+  font-size:11.5px;
+  font-weight:600;
+  color:var(--ink-soft);
+}
 .t-add-game-row{
   display:flex;
   flex-wrap:wrap;
@@ -2308,6 +2259,11 @@ body.tournament-theme .group-btn.active{
   padding:12px;
   background:var(--bg);
 }
+.t-stats-col-title{
+  padding:0;
+  background:none !important;
+  margin-bottom:10px;
+}
 .t-kda-head{
   display:grid;
   grid-template-columns:1fr 46px 46px 46px;
@@ -2348,6 +2304,12 @@ body.tournament-theme .group-btn.active{
   background:var(--bg-alt);
   color:var(--ink);
   font-size:13px;
+  -moz-appearance:textfield;
+}
+.t-kda-input::-webkit-outer-spin-button,
+.t-kda-input::-webkit-inner-spin-button{
+  -webkit-appearance:none;
+  margin:0;
 }
 .t-kda-input:focus{
   outline:none;

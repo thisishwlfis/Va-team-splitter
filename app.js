@@ -1295,18 +1295,13 @@ function enterTournamentMode(){
   const appEl = $('.app');
   appEl.classList.add('tournament-flip');
 
-  const sweep = document.createElement('div');
-  sweep.className = 'tournament-light-sweep';
-  document.body.appendChild(sweep);
-  sweep.addEventListener('animationend', () => sweep.remove(), { once:true });
-
-  // 애니메이션 중간(화면이 뒤집혀 안 보이는 시점)에 테마를 전환해 자연스럽게 보이도록 함
+  // 페이드 아웃이 끝나는 시점(화면이 보이지 않는 시점)에 테마를 전환해 자연스럽게 보이도록 함
   setTimeout(() => {
     document.body.classList.add('tournament-theme');
     state.tournamentMode = true;
     $('#btnTournamentMode').classList.add('hidden');
     $('#btnSaveTournamentResult').classList.remove('hidden');
-  }, 600);
+  }, 350);
 
   appEl.addEventListener('animationend', () => {
     appEl.classList.remove('tournament-flip');
@@ -1541,7 +1536,7 @@ function tTeamMembers(n){
 
 /* ---- 경기 추가 폼 (맞대결 팀 선택 → 선수별 K/D/A 입력 → 승리 팀 선택) ---- */
 function tOpenAddGameForm(){
-  tState.addGameDraft = { selected:[], winner:null, stats:{} };
+  tState.addGameDraft = { selected:[], winner:null, stats:{}, bo:null, teamMaps:{ 1:[], 2:[] }, mapAssignments:[] };
   tRenderResults();
 }
 
@@ -1559,11 +1554,64 @@ function tBuildAddGamePanelHtml(){
     <button type="button" class="bo-btn t-matchup-chip ${draft.selected.includes(n) ? 'active' : ''}" data-team="${n}">TEAM ${n}</button>
   `).join('');
 
+  let boHtml = '';
+  let mapPickHtml = '';
+  let mapResultHtml = '';
   let statsHtml = '';
   let winnerHtml = '';
   const [teamA, teamB] = draft.selected;
 
   if(teamA && teamB){
+    const boBtnsHtml = [3, 5, 7, 9].map(n => `
+      <button type="button" class="bo-btn t-add-bo-btn ${draft.bo === n ? 'active' : ''}" data-bo="${n}">BO${n}</button>
+    `).join('');
+    boHtml = `
+      <p class="counter" style="margin-top:18px; margin-bottom:10px;">세트 수(BO)를 선택하세요</p>
+      <div class="bo-select">${boBtnsHtml}</div>
+    `;
+  }
+
+  if(teamA && teamB && draft.bo && draft.mapAssignments.length === 0){
+    mapPickHtml = `
+      <p class="counter" style="margin-top:18px;">각 팀이 선호하는 맵을 ${draft.bo}개씩 고르세요</p>
+      <div class="map-picker-columns">
+        <div class="map-picker-col">
+          <div class="team-title team-1">TEAM ${teamA}</div>
+          <p class="map-pick-count" id="tAddT1PickCount">${draft.teamMaps[1].length} / ${draft.bo} 선택</p>
+          <div class="map-grid" id="tAddT1MapGrid"></div>
+        </div>
+        <div class="map-picker-col">
+          <div class="team-title team-2">TEAM ${teamB}</div>
+          <p class="map-pick-count" id="tAddT2PickCount">${draft.teamMaps[2].length} / ${draft.bo} 선택</p>
+          <div class="map-grid" id="tAddT2MapGrid"></div>
+        </div>
+      </div>
+      <div class="nav-row nav-row-right">
+        <button type="button" class="btn btn-primary" id="btnTAddAssignMaps" ${(draft.teamMaps[1].length === draft.bo && draft.teamMaps[2].length === draft.bo) ? '' : 'disabled'}>맵 / 진영 배정</button>
+      </div>
+      <div class="map-result-list" id="tAddMapResultList"></div>
+    `;
+  }
+
+  if(draft.mapAssignments.length > 0){
+    const rowsHtml = draft.mapAssignments.map(item => `
+      <div class="map-result-item revealed" style="${buildMapCardBackground(item.map)}">
+        <span class="map-result-game">${item.game}세트</span>
+        <span class="map-result-name">${escapeHtml(item.map)}</span>
+        <span class="map-result-badge map-result-badge-${item.source}">${MAP_SOURCE_LABEL[item.source]}</span>
+        ${buildSidePillsHtml(item)}
+      </div>
+    `).join('');
+    mapResultHtml = `
+      <p class="counter" style="margin-top:18px; margin-bottom:10px;">맵 / 진영 배정 결과</p>
+      <div class="map-result-list">${rowsHtml}</div>
+      <div class="nav-row nav-row-right">
+        <button type="button" class="mini-btn" id="btnTAddResetMaps">맵 다시 선택</button>
+      </div>
+    `;
+  }
+
+  if(teamA && teamB && draft.mapAssignments.length > 0){
     const buildStatsCol = (teamNum) => {
       const tags = tTeamMembers(teamNum);
       const rowsHtml = tags.length === 0
@@ -1575,16 +1623,16 @@ function tBuildAddGamePanelHtml(){
               <div class="t-kda-row">
                 <span class="t-kda-name">${escapeHtml(tag)} ${getTierBadgeHtml(p.tier)}</span>
                 <div class="t-kda-inputs">
-                  <input type="number" min="0" class="t-kda-input" data-tag="${escapeAttrJs(tag)}" data-stat="k" placeholder="K" value="${escapeAttrJs(String(s.k))}" />
-                  <input type="number" min="0" class="t-kda-input" data-tag="${escapeAttrJs(tag)}" data-stat="d" placeholder="D" value="${escapeAttrJs(String(s.d))}" />
-                  <input type="number" min="0" class="t-kda-input" data-tag="${escapeAttrJs(tag)}" data-stat="a" placeholder="A" value="${escapeAttrJs(String(s.a))}" />
+                  <input type="text" inputmode="numeric" pattern="[0-9]*" class="t-kda-input" data-tag="${escapeAttrJs(tag)}" data-stat="k" placeholder="K" value="${escapeAttrJs(String(s.k))}" />
+                  <input type="text" inputmode="numeric" pattern="[0-9]*" class="t-kda-input" data-tag="${escapeAttrJs(tag)}" data-stat="d" placeholder="D" value="${escapeAttrJs(String(s.d))}" />
+                  <input type="text" inputmode="numeric" pattern="[0-9]*" class="t-kda-input" data-tag="${escapeAttrJs(tag)}" data-stat="a" placeholder="A" value="${escapeAttrJs(String(s.a))}" />
                 </div>
               </div>
             `;
           }).join('');
       return `
         <div class="t-stats-col">
-          <span class="team-title">TEAM ${teamNum}</span>
+          <span class="team-title t-stats-col-title">TEAM ${teamNum}</span>
           <div class="t-kda-head"><span></span><span>K</span><span>D</span><span>A</span></div>
           ${rowsHtml}
         </div>
@@ -1617,11 +1665,14 @@ function tBuildAddGamePanelHtml(){
       </div>
       <p class="counter" style="margin-bottom:10px;">맞붙은 두 팀을 선택하세요</p>
       <div class="bo-select">${matchupBtnsHtml}</div>
+      ${boHtml}
+      ${mapPickHtml}
+      ${mapResultHtml}
       ${statsHtml}
       ${winnerHtml}
       <div class="nav-row">
         <button class="btn btn-ghost" id="btnCancelAddGame">취소</button>
-        <button class="btn btn-primary" id="btnConfirmAddGame" ${(teamA && teamB && draft.winner) ? '' : 'disabled'}>경기 추가</button>
+        <button class="btn btn-primary" id="btnConfirmAddGame" ${(teamA && teamB && draft.mapAssignments.length > 0 && draft.winner) ? '' : 'disabled'}>경기 추가</button>
       </div>
     </div>
   `;
@@ -1643,12 +1694,45 @@ function tWireAddGamePanel(){
       }
       draft.winner = null;
       draft.stats = {};
+      draft.bo = null;
+      draft.teamMaps = { 1:[], 2:[] };
+      draft.mapAssignments = [];
       tRenderResults();
     });
   });
 
+  $$('.t-add-bo-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      draft.bo = Number(btn.dataset.bo);
+      draft.teamMaps = { 1:[], 2:[] };
+      draft.mapAssignments = [];
+      tRenderResults();
+    });
+  });
+
+  if(draft.bo && draft.mapAssignments.length === 0){
+    tRenderMapGrid(1);
+    tRenderMapGrid(2);
+  }
+
+  const assignBtn = $('#btnTAddAssignMaps');
+  if(assignBtn) assignBtn.addEventListener('click', tAssignMapsForDraft);
+
+  const resetMapsBtn = $('#btnTAddResetMaps');
+  if(resetMapsBtn){
+    resetMapsBtn.addEventListener('click', () => {
+      draft.bo = null;
+      draft.teamMaps = { 1:[], 2:[] };
+      draft.mapAssignments = [];
+      draft.stats = {};
+      draft.winner = null;
+      tRenderResults();
+    });
+  }
+
   $$('.t-kda-input').forEach(inp => {
     inp.addEventListener('input', () => {
+      inp.value = inp.value.replace(/[^0-9]/g, '');
       const tag = inp.dataset.tag;
       const stat = inp.dataset.stat;
       if(!draft.stats[tag]) draft.stats[tag] = { k:'', d:'', a:'' };
@@ -1670,10 +1754,135 @@ function tWireAddGamePanel(){
   if(confirmBtn) confirmBtn.addEventListener('click', tConfirmAddGame);
 }
 
+/* ---- 맵 선호도 선택 + 랜덤 배정 (03 게임설정 화면과 동일한 로직 재사용) ---- */
+function tRenderMapGrid(teamNum){
+  const draft = tState.addGameDraft;
+  const grid = $(teamNum === 1 ? '#tAddT1MapGrid' : '#tAddT2MapGrid');
+  if(!grid) return;
+  grid.innerHTML = '';
+  MAPS.forEach(map => {
+    const picked = draft.teamMaps[teamNum].includes(map);
+    const atLimit = draft.teamMaps[teamNum].length >= draft.bo && !picked;
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = `map-chip ${picked ? 'active' : ''}`;
+    btn.textContent = map;
+    btn.disabled = atLimit;
+    btn.addEventListener('click', () => tToggleMapPick(teamNum, map));
+    grid.appendChild(btn);
+  });
+}
+
+function tToggleMapPick(teamNum, map){
+  const draft = tState.addGameDraft;
+  const list = draft.teamMaps[teamNum];
+  const idx = list.indexOf(map);
+  if(idx >= 0){
+    list.splice(idx, 1);
+  }else{
+    if(list.length >= draft.bo) return;
+    list.push(map);
+  }
+  const countEl = $(teamNum === 1 ? '#tAddT1PickCount' : '#tAddT2PickCount');
+  if(countEl) countEl.textContent = `${list.length} / ${draft.bo} 선택`;
+  tRenderMapGrid(teamNum);
+
+  const ready = draft.teamMaps[1].length === draft.bo && draft.teamMaps[2].length === draft.bo;
+  const assignBtn = $('#btnTAddAssignMaps');
+  if(assignBtn) assignBtn.disabled = !ready;
+}
+
+function tAssignMapsForDraft(){
+  const draft = tState.addGameDraft;
+  const bo = draft.bo;
+  const t1 = draft.teamMaps[1];
+  const t2 = draft.teamMaps[2];
+
+  const pool = [];
+  const allMaps = Array.from(new Set([...t1, ...t2]));
+  allMaps.forEach(map => {
+    const inT1 = t1.includes(map);
+    const inT2 = t2.includes(map);
+    if(inT1 && inT2){
+      pool.push({ map, source: 'common' });
+      pool.push({ map, source: 'common' });
+    }else if(inT1){
+      pool.push({ map, source: 'team1' });
+    }else{
+      pool.push({ map, source: 'team2' });
+    }
+  });
+
+  for(let i = pool.length - 1; i > 0; i--){
+    const j = Math.floor(Math.random() * (i + 1));
+    [pool[i], pool[j]] = [pool[j], pool[i]];
+  }
+
+  const usedMaps = new Set();
+  const chosen = [];
+  for(const item of pool){
+    if(chosen.length >= bo) break;
+    if(usedMaps.has(item.map)) continue;
+    usedMaps.add(item.map);
+    chosen.push(item);
+  }
+
+  const finalAssignments = chosen.map((item, idx) => ({ game: idx + 1, map: item.map, source: item.source }));
+  applySetSides(finalAssignments);
+  tRunMapRouletteAnimation(finalAssignments);
+}
+
+function tRunMapRouletteAnimation(finalAssignments){
+  const draft = tState.addGameDraft;
+  const box = $('#tAddMapResultList');
+  if(!box) return;
+  box.innerHTML = '';
+  const assignBtn = $('#btnTAddAssignMaps');
+  if(assignBtn) assignBtn.disabled = true;
+
+  const rows = finalAssignments.map(item => {
+    const row = document.createElement('div');
+    row.className = 'map-result-item spinning';
+    row.innerHTML = `
+      <span class="map-result-game">${item.game}세트</span>
+      <span class="map-result-name">${escapeHtml(MAPS[Math.floor(Math.random() * MAPS.length)])}</span>
+      <span class="map-result-badge map-result-badge-spin">?</span>
+    `;
+    box.appendChild(row);
+    return row;
+  });
+
+  rows.forEach((row, idx) => {
+    const nameEl = row.querySelector('.map-result-name');
+    const spinTimer = setInterval(() => {
+      nameEl.textContent = MAPS[Math.floor(Math.random() * MAPS.length)];
+    }, 55);
+
+    const stopDelay = 550 + idx * 380;
+    setTimeout(() => {
+      clearInterval(spinTimer);
+      const item = finalAssignments[idx];
+      nameEl.textContent = item.map;
+      row.classList.remove('spinning');
+      row.classList.add('revealed');
+      row.style.cssText += buildMapCardBackground(item.map);
+      const badge = row.querySelector('.map-result-badge');
+      badge.textContent = MAP_SOURCE_LABEL[item.source];
+      badge.className = `map-result-badge map-result-badge-${item.source}`;
+      row.insertAdjacentHTML('beforeend', buildSidePillsHtml(item));
+
+      if(idx === rows.length - 1){
+        draft.mapAssignments = finalAssignments;
+        setTimeout(() => { tRenderResults(); }, 300);
+      }
+    }, stopDelay);
+  });
+}
+
 function tConfirmAddGame(){
   const draft = tState.addGameDraft;
   const [teamA, teamB] = draft.selected;
-  if(!draft || !teamA || !teamB || !draft.winner) return;
+  if(!draft || !teamA || !teamB || !draft.winner || draft.mapAssignments.length === 0) return;
 
   const stats = {};
   [...tTeamMembers(teamA), ...tTeamMembers(teamB)].forEach(tag => {
@@ -1690,6 +1899,8 @@ function tConfirmAddGame(){
     game: entry.games.length + 1,
     teamA,
     teamB,
+    bo: draft.bo,
+    mapAssignments: draft.mapAssignments,
     winnerTeam: draft.winner,
     stats
   });
@@ -1766,7 +1977,10 @@ function tRenderResults(){
     : entry.games.map((g, idx) => `
       <div class="t-game-row">
         <span>게임 ${idx + 1}</span>
-        <span class="t-game-winner">TEAM ${g.teamA || '-'} vs TEAM ${g.teamB || '-'} · TEAM ${g.winnerTeam} 승리</span>
+        <span class="t-game-winner">
+          TEAM ${g.teamA || '-'} vs TEAM ${g.teamB || '-'} · TEAM ${g.winnerTeam} 승리
+          ${g.bo ? `<span class="t-game-maps">BO${g.bo} · ${(g.mapAssignments || []).map(m => escapeHtml(m.map)).join(', ')}</span>` : ''}
+        </span>
         <button type="button" class="row-delete t-game-delete" data-idx="${idx}" aria-label="삭제">✕</button>
       </div>
     `).join('');
