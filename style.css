@@ -2136,3 +2136,12 @@ body.tournament-theme .group-btn{
 body.tournament-theme .cap-btn.active{
   background:rgba(255,214,92,0.12);
 }
+body.tournament-theme .group-controls{
+  background:var(--bg);
+  border:1px solid var(--line);
+}
+body.tournament-theme .group-btn.active{
+  background:var(--red-tint);
+  border-color:var(--red);
+  color:var(--red);
+}

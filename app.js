@@ -1505,6 +1505,7 @@ function tRenderEditMembers(){
       <button class="btn btn-ghost" id="btnTMembersBack">← 대회 목록</button>
       <button class="btn btn-primary" id="btnTMembersNext" ${count === 0 ? 'disabled' : ''}>다음</button>
     </div>
+    <div id="tMembersMsg" class="load-error hidden"></div>
   `;
 
   function tUpdateCounter(){
@@ -1592,7 +1593,31 @@ function tRenderEditMembers(){
   });
 
   $('#btnTMembersBack').addEventListener('click', tRenderList);
-  $('#btnTMembersNext').addEventListener('click', tOpenEditTeams);
+  $('#btnTMembersNext').addEventListener('click', tSaveMembersAndNext);
+}
+
+/* 멤버 선택 단계에서 "다음"을 누르면 지금까지의 진행 상황을 즉시 저장한 뒤 다음 단계로 이동 */
+async function tSaveMembersAndNext(){
+  const msgBox = $('#tMembersMsg');
+  if(msgBox) msgBox.classList.add('hidden');
+
+  const t = tState.editing;
+  t.memberTags = [...tState.memberSelection];
+  const idx = tState.tournaments.findIndex(x => x.id === t.id);
+  if(idx !== -1) tState.tournaments[idx] = t;
+
+  const btn = $('#btnTMembersNext');
+  if(btn){ btn.disabled = true; btn.textContent = '저장 중...'; }
+  try{
+    await tSaveTournaments();
+    tOpenEditTeams();
+  }catch(err){
+    if(msgBox){
+      msgBox.classList.remove('hidden');
+      msgBox.innerHTML = `<strong>저장 실패</strong><br>${escapeHtml(err.message)}`;
+    }
+    if(btn){ btn.disabled = false; btn.textContent = '다음'; }
+  }
 }
 
 /* ---------------- EDIT: STEP 2 - TEAM COUNT + ASSIGN ---------------- */
