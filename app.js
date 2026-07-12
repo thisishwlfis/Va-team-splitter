@@ -226,23 +226,10 @@ function renderPlayerGrid(){
     card.addEventListener('click', () => toggleSelect(p.tag, card));
     grid.appendChild(card);
   });
-  equalizePlayerCardWidths(grid);
   updateSelectUI();
 }
 
-/* 카드 폭을 가장 긴 콘텐츠 기준으로 통일 (그리드는 flex + justify-content:center 로
-   마지막 줄이 남더라도 가운데 정렬됨) */
-function equalizePlayerCardWidths(grid){
-  const cards = Array.from(grid.querySelectorAll('.player-card'));
-  if(!cards.length) return;
-  cards.forEach(c => { c.style.width = 'max-content'; });
-  let maxW = 0;
-  cards.forEach(c => { maxW = Math.max(maxW, c.getBoundingClientRect().width); });
-  cards.forEach(c => { c.style.width = ''; });
-  maxW = Math.ceil(maxW);
-  grid.style.setProperty('--player-card-w', maxW + 'px');
-  grid.style.setProperty('--player-card-w-sm', maxW + 'px');
-}
+/* 카드 폭은 이제 4열 CSS 그리드가 균등하게 맞춰주므로 별도 계산이 필요 없음 */
 
 function toggleSelect(tag, cardEl){
   const idx = state.selected.indexOf(tag);
@@ -883,7 +870,7 @@ function runMapRouletteAnimation(finalAssignments){
       const item = finalAssignments[idx];
       nameEl.textContent = item.map;
       row.classList.remove('spinning');
-      row.classList.add('revealed');
+      row.classList.add('revealed', 'reveal-pop');
       row.style.cssText += buildMapCardBackground(item.map);
       const badge = row.querySelector('.map-result-badge');
       badge.textContent = MAP_SOURCE_LABEL[item.source];
@@ -1536,7 +1523,7 @@ function tTeamMembers(n){
 
 /* ---- 경기 추가 폼 (맞대결 팀 선택 → 선수별 K/D/A 입력 → 승리 팀 선택) ---- */
 function tOpenAddGameForm(){
-  tState.addGameDraft = { selected:[], winner:null, stats:{}, bo:null, teamMaps:{ 1:[], 2:[] }, mapAssignments:[], setWinners:{}, pendingSetWinners:{}, expandedSet:null };
+  tState.addGameDraft = { selected:[], winner:null, stats:{}, bo:null, teamMaps:{ 1:[], 2:[] }, mapAssignments:[], setWinners:{}, pendingSetWinners:{}, expandedSet:null, justExpandedSet:null };
   tRenderResults();
 }
 
@@ -1599,6 +1586,7 @@ function tBuildAddGamePanelHtml(){
     if(!draft.setWinners) draft.setWinners = {};
     if(!draft.pendingSetWinners) draft.pendingSetWinners = {};
     if(draft.expandedSet === undefined) draft.expandedSet = null;
+    if(draft.justExpandedSet === undefined) draft.justExpandedSet = null;
 
     const buildStatsCol = (teamNum, setIdx) => {
       const tags = tTeamMembers(teamNum);
@@ -1638,7 +1626,7 @@ function tBuildAddGamePanelHtml(){
         : '';
 
       const panelHtml = isOpen ? `
-        <div class="t-set-kda-panel">
+        <div class="t-set-kda-panel ${draft.justExpandedSet === setIdx ? 'slide-in' : ''}">
           <p class="counter" style="margin:12px 0 8px;">${item.game}세트 (${escapeHtml(item.map)}) K / D / A</p>
           <div class="t-stats-columns">
             ${buildStatsCol(teamA, setIdx)}
@@ -1731,6 +1719,7 @@ function tWireAddGamePanel(){
       draft.setWinners = {};
       draft.pendingSetWinners = {};
       draft.expandedSet = null;
+      draft.justExpandedSet = null;
       tRenderResults();
     });
   });
@@ -1745,6 +1734,7 @@ function tWireAddGamePanel(){
       draft.setWinners = {};
       draft.pendingSetWinners = {};
       draft.expandedSet = null;
+      draft.justExpandedSet = null;
       tRenderResults();
     });
   });
@@ -1768,6 +1758,7 @@ function tWireAddGamePanel(){
       draft.setWinners = {};
       draft.pendingSetWinners = {};
       draft.expandedSet = null;
+      draft.justExpandedSet = null;
       tRenderResults();
     });
   }
@@ -1775,7 +1766,13 @@ function tWireAddGamePanel(){
   $$('.t-map-box').forEach(box => {
     box.addEventListener('click', () => {
       const setIdx = Number(box.dataset.set);
-      draft.expandedSet = (draft.expandedSet === setIdx) ? null : setIdx;
+      if(draft.expandedSet === setIdx){
+        draft.expandedSet = null;
+        draft.justExpandedSet = null;
+      }else{
+        draft.expandedSet = setIdx;
+        draft.justExpandedSet = setIdx;
+      }
       tRenderResults();
     });
   });
@@ -1787,6 +1784,7 @@ function tWireAddGamePanel(){
       const team = Number(btn.dataset.team);
       if(!draft.pendingSetWinners) draft.pendingSetWinners = {};
       draft.pendingSetWinners[setIdx] = team;
+      draft.justExpandedSet = null;
       tRenderResults();
     });
   });
@@ -1800,6 +1798,7 @@ function tWireAddGamePanel(){
       if(!draft.setWinners) draft.setWinners = {};
       draft.setWinners[setIdx] = team;
       draft.expandedSet = null;
+      draft.justExpandedSet = null;
       tRenderResults();
     });
   });
@@ -1942,7 +1941,7 @@ function tRunMapRouletteAnimation(finalAssignments){
       const item = finalAssignments[idx];
       nameEl.textContent = item.map;
       row.classList.remove('spinning');
-      row.classList.add('revealed');
+      row.classList.add('revealed', 'reveal-pop');
       row.style.cssText += buildMapCardBackground(item.map);
       const badge = row.querySelector('.map-result-badge');
       badge.textContent = MAP_SOURCE_LABEL[item.source];

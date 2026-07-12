@@ -131,9 +131,8 @@ main{flex:1;}
 
 /* PLAYER GRID */
 .player-grid{
-  display:flex;
-  flex-wrap:wrap;
-  justify-content:center;
+  display:grid;
+  grid-template-columns:repeat(4, 1fr);
   gap:10px;
   margin-bottom:28px;
 }
@@ -149,13 +148,12 @@ main{flex:1;}
   cursor:pointer;
   transition:border-color .15s, background .15s, transform .1s;
   user-select:none;
-  flex:0 0 auto;
-  width:var(--player-card-w, calc(25% - 7.5px));
+  width:100%;
   max-width:100%;
   box-sizing:border-box;
 }
 @media (max-width:640px){
-  .player-card{width:var(--player-card-w-sm, calc(50% - 5px));}
+  .player-grid{grid-template-columns:repeat(2, 1fr);}
 }
 .player-card:hover{border-color:#D8D9DE;}
 .player-card.checked{
@@ -554,7 +552,6 @@ main{flex:1;}
   100%{transform:translateY(3px); opacity:0.5;}
 }
 .map-result-item.revealed{
-  animation:mapRevealPop .32s cubic-bezier(.34,1.56,.64,1);
   border:none;
   color:#fff;
   min-height:56px;
@@ -562,6 +559,9 @@ main{flex:1;}
 .map-result-item.revealed .map-result-game{color:rgba(255,255,255,0.78);}
 .map-result-item.revealed .map-result-name{color:#fff; text-shadow:0 1px 3px rgba(0,0,0,0.35);}
 .map-result-item.revealed .map-side-pill:not(.attack):not(.defense){background:rgba(255,255,255,0.16); color:#fff;}
+.map-result-item.reveal-pop{
+  animation:mapRevealPop .32s cubic-bezier(.34,1.56,.64,1);
+}
 @keyframes mapRevealPop{
   0%{transform:scale(0.9); opacity:0.3;}
   60%{transform:scale(1.03); opacity:1;}
@@ -596,11 +596,14 @@ main{flex:1;}
   border-radius:0 0 10px 10px;
   padding:14px;
   background:var(--bg);
-  animation:tSetPanelOpen .2s ease;
+  overflow:hidden;
 }
-@keyframes tSetPanelOpen{
-  0%{opacity:0; transform:translateY(-6px);}
-  100%{opacity:1; transform:translateY(0);}
+.t-set-kda-panel.slide-in{
+  animation:tSetPanelSlide .28s cubic-bezier(.2,.7,.3,1);
+}
+@keyframes tSetPanelSlide{
+  0%{opacity:0; max-height:0; padding-top:0; padding-bottom:0; transform:translateY(-10px);}
+  100%{opacity:1; max-height:600px; padding-top:14px; padding-bottom:14px; transform:translateY(0);}
 }
 .t-set-winner-btn{ min-width:100px; }
 
