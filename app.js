@@ -1335,6 +1335,27 @@ function showTournamentScreen(){
 const TOURNAMENTS_PATH = 'data/tournaments.json';
 const TOURNAMENTS_LOCAL_KEY = 'teamsplit_tournaments_local';
 
+/* 이 저장소는 public이므로, 토큰 없이도 GitHub API로 읽기가 가능하다.
+   owner/repo는 이미 register.js에도 공개돼 있는 값과 동일하다(민감정보 아님). */
+const PUBLIC_REPO_OWNER = 'thisishwlfis';
+const PUBLIC_REPO_NAME = 'Va-team-splitter';
+const PUBLIC_REPO_BRANCH = 'main';
+
+/* 토큰 없이 GitHub Contents API로 파일을 읽는다 (public 저장소 전용, 읽기만).
+   정적 파일(fetchStaticJson)이 아직 배포 전이라 실패했을 때의 백업 경로. */
+async function fetchPublicGithubJson(path){
+  try{
+    const url = `https://api.github.com/repos/${PUBLIC_REPO_OWNER}/${PUBLIC_REPO_NAME}/contents/${path}?ref=${encodeURIComponent(PUBLIC_REPO_BRANCH)}`;
+    const res = await fetch(url, { headers:{ 'Accept': 'application/vnd.github+json' } });
+    if(!res.ok) return null;
+    const json = await res.json();
+    const text = GitHubStore.b64decode(json.content);
+    return JSON.parse(text);
+  }catch(e){
+    return null;
+  }
+}
+
 const tState = {
   tournaments: [],
   sha: null,
@@ -1361,6 +1382,15 @@ async function tLoadTournaments(){
   if(staticData){
     tState.tournaments = staticData;
     tState.sha = null; // 저장 직전 최신 sha를 다시 받아오므로 여기선 필요 없음
+    tState.usingLocal = false;
+    return;
+  }
+
+  // 1.5) 누구나: Pages 배포가 아직 안 됐어도, 토큰 없이 GitHub API로 바로 읽는다 (public 저장소).
+  const publicData = await fetchPublicGithubJson(TOURNAMENTS_PATH);
+  if(publicData){
+    tState.tournaments = publicData;
+    tState.sha = null;
     tState.usingLocal = false;
     return;
   }
@@ -1565,13 +1595,20 @@ async function tOpenResults(t){
     const staticResults = await fetchStaticJson(TOURNAMENT_RESULTS_PATH);
     if(staticResults){
       results = staticResults;
-    }else if(cfg && GitHubStore.hasConfig()){
-      // 2) 정적 파일이 아직 없거나 배포 전이면, 관리자 토큰으로 직접 조회
-      const fetched = await fetchTournamentResults(cfg);
-      sha = fetched.sha;
-      results = fetched.results;
     }else{
-      throw new Error('결과 데이터를 찾을 수 없습니다. 아직 저장된 결과가 없거나 배포 전일 수 있습니다.');
+      // 1.5) 누구나: Pages 배포 전이어도 토큰 없이 GitHub API로 바로 읽는다 (public 저장소).
+      const publicResults = await fetchPublicGithubJson(TOURNAMENT_RESULTS_PATH);
+      if(publicResults){
+        results = publicResults;
+      }else if(cfg && GitHubStore.hasConfig()){
+        // 2) 그래도 없으면(예: private 저장소), 관리자 토큰으로 직접 조회
+        const fetched = await fetchTournamentResults(cfg);
+        sha = fetched.sha;
+        results = fetched.results;
+      }else{
+        // 3) 파일이 아직 한 번도 저장된 적 없는 것 — 에러가 아니라 "결과 없음" 상태로 처리
+        results = [];
+      }
     }
 
     tState.resultsSha = sha;
