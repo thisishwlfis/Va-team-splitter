@@ -1411,9 +1411,7 @@ async function tRenderList(){
   const boxesHtml = tState.tournaments.map(t => `
     <div class="tournament-box" data-id="${t.id}">
       <span class="tournament-box-name">${escapeHtml(t.name)}</span>
-      ${tState.readOnly
-        ? `<button type="button" class="tournament-edit-btn t-view-teams-btn" data-id="${t.id}">팀 보기</button>`
-        : `<button type="button" class="tournament-edit-btn" data-id="${t.id}">편집</button>`}
+      ${tState.readOnly ? '' : `<button type="button" class="tournament-edit-btn" data-id="${t.id}">편집</button>`}
     </div>
   `).join('');
 
@@ -1457,13 +1455,6 @@ async function tRenderList(){
       btn.addEventListener('click', () => {
         const t = tState.tournaments.find(x => x.id === btn.dataset.id);
         tOpenEditMembers(t);
-      });
-    });
-  }else{
-    $$('.t-view-teams-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const t = tState.tournaments.find(x => x.id === btn.dataset.id);
-        tOpenTeamsView(t);
       });
     });
   }
@@ -2172,6 +2163,8 @@ function tRenderResults(){
       <p class="counter">${tState.readOnly ? '이 대회의 경기 결과를 조회할 수 있습니다.' : '맞붙은 팀을 선택하고 선수별 K/D/A를 입력해 경기를 기록하세요.'}</p>
     </div>
 
+    ${tBuildTeamsCompositionHtml(t)}
+
     <div class="t-rank-section">
       <span class="t-rank-title">실시간 팀 랭킹</span>
       <div class="t-rank-list">${teamRankHtml}</div>
@@ -2613,15 +2606,8 @@ function tRenderTeamSetupBody(){
 
 function escapeAttrJs(str){ return escapeHtml(str).replace(/"/g, '&quot;'); }
 
-/* ---------------- VIEWER MODE: 팀 구성 읽기전용 보기 ---------------- */
-function tOpenTeamsView(t){
-  tState.viewingTeamsOf = t;
-  tRenderTeamsView();
-}
-
-function tRenderTeamsView(){
-  const view = $('#tView');
-  const t = tState.viewingTeamsOf;
+/* ---------------- 팀 구성 표시 (읽기전용) - 경기 결과 화면 상단에 삽입 ---------------- */
+function tBuildTeamsCompositionHtml(t){
   const teamCount = t.teamCount && t.teamCount >= 2 ? t.teamCount : 2;
   const captains = Array.isArray(t.captains) ? t.captains : [];
   const teams = t.teams || {};
@@ -2656,18 +2642,12 @@ function tRenderTeamsView(){
     `;
   }).join('');
 
-  view.innerHTML = `
-    <div class="screen-intro">
-      <h2>${escapeHtml(t.name)} · 팀 구성</h2>
-      <p class="counter">구성된 팀을 조회만 할 수 있습니다.</p>
-    </div>
-    <div class="t-team-grid">${colsHtml}</div>
-    <div class="nav-row" style="margin-top:16px;">
-      <button class="btn btn-ghost" id="btnTTeamsViewBack">← 대회 목록</button>
+  return `
+    <div class="t-rank-section">
+      <span class="t-rank-title">팀 구성</span>
+      <div class="t-team-grid">${colsHtml}</div>
     </div>
   `;
-
-  $('#btnTTeamsViewBack').addEventListener('click', tRenderList);
 }
 
 async function tSaveTeamsAndReturn(){
