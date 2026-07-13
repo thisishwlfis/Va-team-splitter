@@ -108,6 +108,20 @@ function getPlayerByTag(tag) {
 }
 
 /* ---------------- LOAD DATA ---------------- */
+
+/* GitHub Pages로 배포된 정적 JSON 파일을 토큰 없이 그냥 읽어오는 헬퍼.
+   저장소가 public이면 누구나(관리자 로그인/토큰 설정 없이) 읽을 수 있음.
+   실패하면(아직 배포 전이거나 파일이 없으면) null을 반환. */
+async function fetchStaticJson(path){
+  try{
+    const res = await fetch(`${path}?t=${Date.now()}`);
+    if(!res.ok) return null;
+    return await res.json();
+  }catch(e){
+    return null;
+  }
+}
+
 async function loadPlayers(){
   try{
     const res = await fetch(`data/players.json?t=${Date.now()}`);
@@ -1341,6 +1355,18 @@ function tGenId(){
 }
 
 async function tLoadTournaments(){
+  // 1) 누구나: GitHub Pages에 배포된 정적 파일을 토큰 없이 읽는다.
+  //    (owner/repo가 public 저장소라면 이 방법으로 모든 방문자가 조회 가능)
+  const staticData = await fetchStaticJson(TOURNAMENTS_PATH);
+  if(staticData){
+    tState.tournaments = staticData;
+    tState.sha = null; // 저장 직전 최신 sha를 다시 받아오므로 여기선 필요 없음
+    tState.usingLocal = false;
+    return;
+  }
+
+  // 2) 관리자이고 이 브라우저에 GitHub 설정이 있다면, API로 직접 시도
+  //    (배포가 아직 안 됐거나 저장소가 private인 경우 대비)
   const cfg = (typeof GitHubStore !== 'undefined') ? GitHubStore.getConfig() : null;
   if(cfg && GitHubStore.hasConfig()){
     try{
@@ -1364,6 +1390,8 @@ async function tLoadTournaments(){
       // fall through to local
     }
   }
+
+  // 3) 둘 다 실패하면 이 브라우저에만 저장된 로컬 데이터 사용
   tState.usingLocal = true;
   try{
     tState.tournaments = JSON.parse(localStorage.getItem(TOURNAMENTS_LOCAL_KEY) || '[]');
@@ -1373,11 +1401,21 @@ async function tLoadTournaments(){
 }
 
 async function tSaveTournaments(){
-  if(!tState.usingLocal){
-    const cfg = GitHubStore.getConfig();
+  const cfg = (typeof GitHubStore !== 'undefined') ? GitHubStore.getConfig() : null;
+  if(cfg && GitHubStore.hasConfig()){
+    // 저장 직전에 최신 sha를 다시 받아온다 (읽기는 정적 파일로 했을 수 있어 sha가 없을 수 있음)
+    let sha = tState.sha;
+    try{
+      const shaRes = await fetch(tournamentApiUrl(cfg, TOURNAMENTS_PATH), {
+        headers:{ 'Authorization': `token ${cfg.token}`, 'Accept': 'application/vnd.github+json' }
+      });
+      if(shaRes.status === 404){ sha = null; }
+      else if(shaRes.ok){ sha = (await shaRes.json()).sha; }
+    }catch(e){ /* keep previous sha */ }
+
     const content = GitHubStore.b64encode(JSON.stringify(tState.tournaments, null, 2) + '\n');
     const body = { message:'대회모드 대회 정보 저장', content, branch: cfg.branch };
-    if(tState.sha) body.sha = tState.sha;
+    if(sha) body.sha = sha;
     const res = await fetch(tournamentApiUrl(cfg, TOURNAMENTS_PATH).split('?')[0], {
       method:'PUT',
       headers:{
@@ -1393,6 +1431,7 @@ async function tSaveTournaments(){
     }
     const json = await res.json();
     tState.sha = json.content ? json.content.sha : tState.sha;
+    tState.usingLocal = false;
   }else{
     localStorage.setItem(TOURNAMENTS_LOCAL_KEY, JSON.stringify(tState.tournaments));
   }
@@ -1502,7 +1541,9 @@ async function tOpenResults(t){
   view.innerHTML = `<div class="t-loading">불러오는 중...</div>`;
 
   const cfg = (typeof GitHubStore !== 'undefined') ? GitHubStore.getConfig() : null;
-  if(!cfg || !GitHubStore.hasConfig()){
+
+  // 편집 모드(관리자)는 결국 저장 시 토큰이 필요하므로, 이 브라우저에 연결이 안 되어 있으면 미리 안내
+  if(!tState.readOnly && (!cfg || !GitHubStore.hasConfig())){
     view.innerHTML = `
       <div class="screen-intro">
         <h2>${escapeHtml(t.name)} · 경기 결과</h2>
@@ -1517,7 +1558,22 @@ async function tOpenResults(t){
   }
 
   try{
-    const { sha, results } = await fetchTournamentResults(cfg);
+    let sha = null;
+    let results = null;
+
+    // 1) 누구나: 배포된 정적 파일을 토큰 없이 읽는다.
+    const staticResults = await fetchStaticJson(TOURNAMENT_RESULTS_PATH);
+    if(staticResults){
+      results = staticResults;
+    }else if(cfg && GitHubStore.hasConfig()){
+      // 2) 정적 파일이 아직 없거나 배포 전이면, 관리자 토큰으로 직접 조회
+      const fetched = await fetchTournamentResults(cfg);
+      sha = fetched.sha;
+      results = fetched.results;
+    }else{
+      throw new Error('결과 데이터를 찾을 수 없습니다. 아직 저장된 결과가 없거나 배포 전일 수 있습니다.');
+    }
+
     tState.resultsSha = sha;
     tState.allResults = results;
     tState.resultsTournament = t;
@@ -2243,7 +2299,14 @@ async function tSaveResults(){
     const others = (tState.allResults || []).filter(r => !(r.type === 'tournament' && r.tournamentId === t.id));
     const merged = [...others, entry];
 
-    const result = await saveTournamentResults(cfg, merged, tState.resultsSha);
+    // 저장 직전에 최신 sha를 다시 받아온다 (읽기를 정적 파일로 했으면 sha가 없을 수 있음)
+    let sha = tState.resultsSha;
+    try{
+      const fresh = await fetchTournamentResults(cfg);
+      sha = fresh.sha;
+    }catch(e){ /* keep previous sha */ }
+
+    const result = await saveTournamentResults(cfg, merged, sha);
     tState.resultsSha = result.content ? result.content.sha : tState.resultsSha;
     tState.allResults = merged;
     tState.resultsDirty = false;
