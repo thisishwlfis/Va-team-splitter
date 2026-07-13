@@ -1411,7 +1411,9 @@ async function tRenderList(){
   const boxesHtml = tState.tournaments.map(t => `
     <div class="tournament-box" data-id="${t.id}">
       <span class="tournament-box-name">${escapeHtml(t.name)}</span>
-      ${tState.readOnly ? '' : `<button type="button" class="tournament-edit-btn" data-id="${t.id}">편집</button>`}
+      ${tState.readOnly
+        ? `<button type="button" class="tournament-edit-btn t-view-teams-btn" data-id="${t.id}">팀 보기</button>`
+        : `<button type="button" class="tournament-edit-btn" data-id="${t.id}">편집</button>`}
     </div>
   `).join('');
 
@@ -1455,6 +1457,13 @@ async function tRenderList(){
       btn.addEventListener('click', () => {
         const t = tState.tournaments.find(x => x.id === btn.dataset.id);
         tOpenEditMembers(t);
+      });
+    });
+  }else{
+    $$('.t-view-teams-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const t = tState.tournaments.find(x => x.id === btn.dataset.id);
+        tOpenTeamsView(t);
       });
     });
   }
@@ -2603,6 +2612,63 @@ function tRenderTeamSetupBody(){
 }
 
 function escapeAttrJs(str){ return escapeHtml(str).replace(/"/g, '&quot;'); }
+
+/* ---------------- VIEWER MODE: 팀 구성 읽기전용 보기 ---------------- */
+function tOpenTeamsView(t){
+  tState.viewingTeamsOf = t;
+  tRenderTeamsView();
+}
+
+function tRenderTeamsView(){
+  const view = $('#tView');
+  const t = tState.viewingTeamsOf;
+  const teamCount = t.teamCount && t.teamCount >= 2 ? t.teamCount : 2;
+  const captains = Array.isArray(t.captains) ? t.captains : [];
+  const teams = t.teams || {};
+
+  const colsHtml = Array.from({length: teamCount}, (_, i) => i + 1).map(n => {
+    const tags = Array.isArray(teams[n]) ? teams[n] : [];
+    const sum = tags.reduce((acc, tag) => acc + getTierScoreExact((getPlayerByTag(tag) || {}).tier), 0);
+    const avgTier = tags.length ? getTierFromScore(sum / 5) : null;
+    const avgHtml = avgTier ? `평균 : <span>${avgTier}</span> ${getTierBadgeHtml(avgTier)}` : '평균 : -';
+
+    const chipsHtml = tags.length === 0
+      ? '<div class="t-team-card-empty">배정된 멤버 없음</div>'
+      : tags.map(tag => {
+          const p = getPlayerByTag(tag) || { tier:'' };
+          const isCap = captains.includes(tag);
+          return `
+            <div class="tag-chip t-view-chip">
+              <div class="chip-top">
+                <span>${escapeHtml(tag)} ${getTierBadgeHtml(p.tier)}</span>
+                ${isCap ? '<span class="t-cap-mark">팀장</span>' : ''}
+              </div>
+            </div>
+          `;
+        }).join('');
+
+    return `
+      <div class="t-team-col">
+        <span class="team-title">TEAM ${n}</span>
+        <div class="team-list">${chipsHtml}</div>
+        <div class="team-avg">${avgHtml}</div>
+      </div>
+    `;
+  }).join('');
+
+  view.innerHTML = `
+    <div class="screen-intro">
+      <h2>${escapeHtml(t.name)} · 팀 구성</h2>
+      <p class="counter">구성된 팀을 조회만 할 수 있습니다.</p>
+    </div>
+    <div class="t-team-grid">${colsHtml}</div>
+    <div class="nav-row" style="margin-top:16px;">
+      <button class="btn btn-ghost" id="btnTTeamsViewBack">← 대회 목록</button>
+    </div>
+  `;
+
+  $('#btnTTeamsViewBack').addEventListener('click', tRenderList);
+}
 
 async function tSaveTeamsAndReturn(){
   const msgBox = $('#tTeamsMsg');
