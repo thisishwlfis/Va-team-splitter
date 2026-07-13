@@ -276,6 +276,61 @@ main{flex:1;}
 .team-title.team-1{background:var(--red-tint); color:var(--red-dark);}
 .team-title.team-2{background:#EFEFF2; color:var(--ink);}
 .team-list{display:flex; flex-direction:column; gap:8px; flex: 1;}
+.t-team-name-row{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  margin-bottom:12px;
+}
+.t-team-name-row .team-title{
+  margin-bottom:0;
+}
+.t-team-name-input{
+  font-family:var(--font-display);
+  font-size:13px;
+  font-weight:700;
+  letter-spacing:0.08em;
+  padding:4px 10px;
+  border-radius:6px;
+  border:1.5px solid var(--red);
+  background:var(--bg-alt);
+  color:var(--ink);
+  max-width:140px;
+  min-width:0;
+}
+.t-team-name-input:focus{
+  outline:none;
+  box-shadow:0 0 0 2px rgba(225,29,46,0.15);
+}
+.t-team-name-edit-btn,
+.t-team-name-save-btn{
+  flex:none;
+  width:22px;
+  height:22px;
+  padding:0;
+  border-radius:6px;
+  border:1px solid var(--line);
+  background:var(--bg);
+  color:var(--ink-soft);
+  font-size:12px;
+  line-height:1;
+  cursor:pointer;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+}
+.t-team-name-edit-btn:hover{
+  border-color:#C9CACF;
+  color:var(--ink);
+}
+.t-team-name-save-btn{
+  border-color:var(--red);
+  color:var(--red);
+  font-weight:700;
+}
+.t-team-name-save-btn:hover{
+  background:var(--red-tint);
+}
 
 .adv-col {
   display: flex;

@@ -2063,7 +2063,7 @@ function tRenderResults(){
   const teamRankHtml = teamRanking.map((r, idx) => `
     <div class="t-rank-row">
       <span class="t-rank-pos">${idx + 1}</span>
-      <span class="team-title" style="margin:0;">TEAM ${r.team}</span>
+      <span class="team-title" style="margin:0;">${escapeHtml(tTeamLabel(t.teamNames, r.team))}</span>
       <span class="t-rank-stat">${r.wins}승 · ${r.played}경기</span>
     </div>
   `).join('') || '<div class="t-team-card-empty">아직 기록된 경기가 없습니다.</div>';
@@ -2371,12 +2371,19 @@ function tOpenEditTeams(){
   tState.teamOf = {};
   tState.captains = Array.isArray(t.captains) ? [...t.captains] : [];
   tState.groupOf = t.groupOf ? { ...t.groupOf } : {};
+  tState.teamNames = t.teamNames ? { ...t.teamNames } : {};
+  tState.editingTeamNameOf = null;
   tState.memberSelection.forEach(tag => {
     for(const [teamNum, tags] of Object.entries(t.teams || {})){
       if(Array.isArray(tags) && tags.includes(tag)) tState.teamOf[tag] = Number(teamNum);
     }
   });
   tRenderEditTeams();
+}
+
+function tTeamLabel(teamNames, n){
+  const custom = teamNames && teamNames[n] ? String(teamNames[n]).trim() : '';
+  return custom || `TEAM ${n}`;
 }
 
 function tRenderEditTeams(){
@@ -2431,6 +2438,12 @@ function tRenderEditTeams(){
   $('#btnTTeamsBack').addEventListener('click', tRenderEditMembers);
   $('#btnTTeamsSave').addEventListener('click', tSaveTeamsAndReturn);
 
+  tRenderTeamSetupBody();
+}
+
+function tSaveTeamName(n, value){
+  tState.teamNames[n] = value;
+  tState.editingTeamNameOf = null;
   tRenderTeamSetupBody();
 }
 
@@ -2529,11 +2542,41 @@ function tRenderTeamSetupBody(){
     const avgTier = tags.length ? getTierFromScore(sum / 5) : null;
     const avgHtml = avgTier ? `평균 : <span>${avgTier}</span> ${getTierBadgeHtml(avgTier)}` : '평균 : -';
 
+    const isEditingName = tState.editingTeamNameOf === n;
+    const nameRowHtml = isEditingName
+      ? `
+        <div class="t-team-name-row">
+          <input type="text" class="t-team-name-input" data-n="${n}" value="${escapeAttrJs(tTeamLabel(tState.teamNames, n))}" placeholder="TEAM ${n}" />
+          <button type="button" class="t-team-name-save-btn" data-n="${n}" aria-label="저장">✓</button>
+        </div>
+      `
+      : `
+        <div class="t-team-name-row">
+          <span class="team-title">${escapeHtml(tTeamLabel(tState.teamNames, n))}</span>
+          <button type="button" class="t-team-name-edit-btn" data-n="${n}" aria-label="팀명 편집">✎</button>
+        </div>
+      `;
+
     col.innerHTML = `
-      <span class="team-title">TEAM ${n}</span>
+      ${nameRowHtml}
       <div class="team-list" data-team="${n}"></div>
       <div class="team-avg">${avgHtml}</div>
     `;
+
+    if(isEditingName){
+      const input = col.querySelector('.t-team-name-input');
+      input.addEventListener('keydown', (e) => {
+        if(e.key === 'Enter') tSaveTeamName(n, input.value);
+      });
+      col.querySelector('.t-team-name-save-btn').addEventListener('click', () => {
+        tSaveTeamName(n, input.value);
+      });
+    }else{
+      col.querySelector('.t-team-name-edit-btn').addEventListener('click', () => {
+        tState.editingTeamNameOf = n;
+        tRenderTeamSetupBody();
+      });
+    }
 
     const list = col.querySelector('.team-list');
     if(tags.length === 0){
@@ -2635,7 +2678,7 @@ function tBuildTeamsCompositionHtml(t){
 
     return `
       <div class="t-team-col">
-        <span class="team-title">TEAM ${n}</span>
+        <span class="team-title">${escapeHtml(tTeamLabel(t.teamNames, n))}</span>
         <div class="team-list">${chipsHtml}</div>
         <div class="team-avg">${avgHtml}</div>
       </div>
@@ -2667,6 +2710,7 @@ async function tSaveTeamsAndReturn(){
   t.teams = teams;
   t.captains = [...tState.captains];
   t.groupOf = { ...tState.groupOf };
+  t.teamNames = { ...tState.teamNames };
 
   const idx = tState.tournaments.findIndex(x => x.id === t.id);
   if(idx !== -1) tState.tournaments[idx] = t;
