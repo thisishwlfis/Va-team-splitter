@@ -1847,6 +1847,41 @@ main{flex:1;}
 }
 .tournament-login-box .nav-row{ margin-top:16px; }
 
+.tournament-login-box .nav-row{
+  flex-direction:column;
+  align-items:stretch;
+}
+.tournament-login-box .nav-row button{
+  width:100%;
+}
+#btnTournamentViewerEnter{
+  background:#fff;
+  border:1.5px solid #e11d2e;
+  color:#e11d2e;
+  font-weight:600;
+}
+#btnTournamentViewerEnter:hover:not(:disabled){
+  background:#fff5f6;
+  border-color:#c8172a;
+  color:#c8172a;
+}
+
+.tournament-admin-panel{
+  overflow:hidden;
+  max-height:0;
+  opacity:0;
+  transform:translateY(-6px);
+  transition:max-height 0.32s ease, opacity 0.28s ease, transform 0.28s ease, margin-top 0.32s ease;
+  margin-top:0;
+}
+.tournament-admin-panel.open{
+  max-height:220px;
+  opacity:1;
+  transform:translateY(0);
+  margin-top:6px;
+}
+.tournament-admin-panel .nav-row{ margin-top:14px; }
+
 /* 대회모드 진입 전환 - 단순 페이드 아웃/인 */
 .tournament-flip{
   animation: tournamentFade 0.7s ease;
