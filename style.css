@@ -1893,24 +1893,21 @@ main{flex:1;}
   100%{ opacity:1; }
 }
 
-/* black + red theme */
+/* 깔끔한 블랙 테마 (빨간 글로우 최소화) */
 body.tournament-theme{
-  --red: #FF2C3C;
-  --red-dark: #8C0F1C;
-  --red-tint: #2A0A0D;
+  --red: #FF3B4E;
+  --red-dark: #C81C2E;
+  --red-tint: #241416;
   --ink: #F2F2F5;
-  --ink-soft: #B9B4B6;
-  --line: #3A1418;
-  --bg: #0A0203;
-  --bg-alt: #150507;
-  --glass-bg: rgba(30,6,8,0.55);
-  --glass-bg-strong: rgba(30,6,8,0.75);
-  --glass-border: rgba(255,44,60,0.25);
-  --glass-shadow: 0 2px 18px rgba(0,0,0,0.5);
-  background:
-    radial-gradient(760px circle at 78% 6%, rgba(255,44,60,0.20), transparent 58%),
-    radial-gradient(680px circle at 10% 85%, rgba(140,15,28,0.18), transparent 55%),
-    linear-gradient(180deg, #0A0203 0%, #150507 100%) !important;
+  --ink-soft: #A9ABB3;
+  --line: #2A2B30;
+  --bg: #121214;
+  --bg-alt: #18181B;
+  --glass-bg: rgba(24,24,27,0.6);
+  --glass-bg-strong: rgba(24,24,27,0.8);
+  --glass-border: rgba(255,255,255,0.08);
+  --glass-shadow: 0 2px 18px rgba(0,0,0,0.4);
+  background: linear-gradient(180deg, #0E0E10 0%, #17171A 100%) !important;
   background-attachment:fixed;
 }
 body.tournament-theme .player-card,
@@ -1923,23 +1920,23 @@ body.tournament-theme .logo-mark{
   background:var(--red);
 }
 body.tournament-theme .tournament-badge{
-  color:#ff5460;
+  color:var(--red);
 }
 body.tournament-theme .team-title.team-1{
-  background:rgba(255,44,60,0.18);
-  color:#ff8790;
+  background:rgba(255,59,78,0.14);
+  color:#ff8b96;
 }
 body.tournament-theme .team-title.team-2{
-  background:rgba(255,255,255,0.10);
-  color:#f2f2f5;
+  background:rgba(255,255,255,0.07);
+  color:var(--ink);
 }
 body.tournament-theme .map-result-badge-team1{
-  background:rgba(255,44,60,0.18);
-  color:#ff8790;
+  background:rgba(255,59,78,0.14);
+  color:#ff8b96;
 }
 body.tournament-theme .map-result-badge-team2{
-  background:rgba(255,255,255,0.10);
-  color:#f2f2f5;
+  background:rgba(255,255,255,0.07);
+  color:var(--ink);
 }
 
 .header-row{
@@ -2103,7 +2100,7 @@ body.tournament-theme .map-result-badge-team2{
   color:#fff;
 }
 
-/* 대회모드 팀 수 선택 버튼 - 다크테마 대응 */
+/* 대회모드 팀 수 선택 버튼 - 블루테마 대응 */
 body.tournament-theme .bo-btn{
   background:var(--bg-alt);
   color:var(--ink-soft);
@@ -2226,15 +2223,15 @@ body.tournament-theme .bo-btn.active{
 body.tournament-theme .t-unassigned-scroll{
   background:
     linear-gradient(var(--bg-alt), var(--bg-alt)) padding-box,
-    linear-gradient(135deg, rgba(255,44,60,0.35), rgba(0,0,0,0)) border-box;
-  box-shadow:0 1px 2px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.03);
+    linear-gradient(135deg, rgba(255,255,255,0.10), rgba(0,0,0,0)) border-box;
+  box-shadow:0 1px 2px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.03);
 }
 .t-assign-teambtns{
   flex-wrap:wrap;
   row-gap:4px;
 }
 
-/* 대회모드 다크테마: 팀 배정 칩/버튼류 색상 보정 */
+/* 대회모드 블랙테마: 팀 배정 칩/버튼류 색상 보정 */
 body.tournament-theme .tag-chip,
 body.tournament-theme .unassigned-chip{
   background:var(--bg-alt);
