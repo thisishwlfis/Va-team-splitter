@@ -1011,7 +1011,7 @@ function buildPngExportNode(){
   wrap.innerHTML = `
     <div class="png-poster">
       <div class="png-header">
-        <div class="png-logo"><span class="png-logo-mark">⟡</span>MatchSplit</div>
+        <div class="png-logo"><span class="png-logo-mark"><svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true"><path d="M12 0C12.6 7.7 13.4 10.6 24 12C13.4 13.4 12.6 16.3 12 24C11.4 16.3 10.6 13.4 0 12C10.6 10.6 11.4 7.7 12 0Z"/></svg></span>MatchSplit</div>
         <div class="png-date">${dateStr}</div>
       </div>
       <div class="png-body">

@@ -4,6 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>MatchSplit</title>
+<link rel="icon" type="image/svg+xml" href="favicon.svg" />
 <link rel="stylesheet" href="style.css" />
 </head>
 <body>
@@ -12,7 +13,7 @@
 
     <div class="header-row">
       <header class="app-header">
-        <div class="logo-mark">⟡</div>
+        <div class="logo-mark"><svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true"><path d="M12 0C12.6 7.7 13.4 10.6 24 12C13.4 13.4 12.6 16.3 12 24C11.4 16.3 10.6 13.4 0 12C10.6 10.6 11.4 7.7 12 0Z"/></svg></div>
         <h1>MatchSplit</h1>
         <div class="step-track" id="stepTrack">
           <span class="step active" data-step="1">01 선택</span>
@@ -196,14 +197,15 @@
         <div class="nav-row">
           <button class="btn btn-ghost" id="btnTournamentViewerEnter">뷰어모드로 입장하기</button>
           <button class="btn btn-primary" id="btnTournamentAdminToggle">관리자모드로 입장하기</button>
-          <button class="btn btn-ghost" id="btnTournamentCancel">취소</button>
         </div>
         <div id="tournamentAdminPanel" class="tournament-admin-panel">
-          <p class="hint-text" style="color:#8a5a60; opacity:0.9;">참가자 관리와 동일한 비밀번호를 입력하세요.</p>
           <input type="password" id="tournamentPassword" placeholder="비밀번호 입력" autocomplete="off" />
           <div class="nav-row">
             <button class="btn btn-primary" id="btnTournamentLogin">입장</button>
           </div>
+        </div>
+        <div class="nav-row">
+          <button class="btn btn-ghost" id="btnTournamentCancel">취소</button>
         </div>
         <div id="tournamentLoginError" class="load-error hidden"></div>
       </div>
