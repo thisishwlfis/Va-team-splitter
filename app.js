@@ -902,13 +902,25 @@ function runMapRouletteAnimation(finalAssignments){
   });
 }
 
-function buildSidePillsHtml(item){
+function buildSidePillsHtml(item, teamNumA, teamNumB){
+  const numA = teamNumA || 1;
+  const numB = teamNumB || 2;
   return `
     <div class="map-side-pills">
-      <span class="map-side-pill ${item.side1}">TEAM 1 · ${item.side1 === 'attack' ? '선공' : '선수비'}</span>
-      <span class="map-side-pill ${item.side2}">TEAM 2 · ${item.side2 === 'attack' ? '선공' : '선수비'}</span>
+      <span class="map-side-pill ${item.side1}">TEAM ${numA} · ${item.side1 === 'attack' ? '선공' : '선수비'}</span>
+      <span class="map-side-pill ${item.side2}">TEAM ${numB} · ${item.side2 === 'attack' ? '선공' : '선수비'}</span>
     </div>
   `;
+}
+
+// 대회모드에서는 맞대결이 항상 TEAM1 vs TEAM2가 아니라 TEAM1 vs TEAM3 처럼
+// 임의의 두 팀일 수 있으므로, source 뱃지 라벨은 실제 선택된 팀 번호를 반영해야 한다.
+function mapSourceLabelFor(source, teamNumA, teamNumB){
+  if(source === 'common') return '공통';
+  if(source === 'manual') return '직접 배정';
+  if(source === 'team1') return `TEAM ${teamNumA || 1}`;
+  if(source === 'team2') return `TEAM ${teamNumB || 2}`;
+  return MAP_SOURCE_LABEL[source] || '';
 }
 
 function renderMapResults(targetSel){
@@ -1644,7 +1656,47 @@ function tTeamMembers(n){
 
 /* ---- 경기 추가 폼 (맞대결 팀 선택 → 선수별 K/D/A 입력 → 승리 팀 선택) ---- */
 function tOpenAddGameForm(){
-  tState.addGameDraft = { selected:[], winner:null, stats:{}, bo:null, teamMaps:{ 1:[], 2:[] }, mapAssignments:[], setWinners:{}, pendingSetWinners:{}, expandedSet:null, justExpandedSet:null };
+  tState.addGameDraft = {
+    selected:[], winner:null, stats:{}, bo:null, teamMaps:{ 1:[], 2:[] }, mapAssignments:[],
+    setWinners:{}, pendingSetWinners:{}, expandedSet:null, justExpandedSet:null,
+    roundScores:{}, pendingRoundScores:{},
+    manualPicking:false, manualMaps:[],
+    editingIdx:null
+  };
+  tRenderResults();
+}
+
+/* ---- 기존에 저장된 경기를 수정 모드로 다시 불러오기 ---- */
+function tOpenEditGameForm(idx){
+  const entry = tState.currentResultEntry;
+  const g = entry.games[idx];
+  if(!g) return;
+  tState.addGameDraft = {
+    selected:[g.teamA, g.teamB],
+    winner:g.winnerTeam || null,
+    stats: JSON.parse(JSON.stringify(g.stats && g.setStats ? {} : {})),
+    bo:g.bo || null,
+    teamMaps:{ 1:[], 2:[] },
+    mapAssignments: (g.mapAssignments || []).map(m => ({ ...m })),
+    setWinners: { ...(g.setWinners || {}) },
+    pendingSetWinners: { ...(g.setWinners || {}) },
+    expandedSet:null, justExpandedSet:null,
+    roundScores: JSON.parse(JSON.stringify(g.roundScores || {})),
+    pendingRoundScores: JSON.parse(JSON.stringify(g.roundScores || {})),
+    manualPicking:false, manualMaps:[],
+    editingIdx: idx
+  };
+  // per-set K/D/A는 setStats에서 복원 (stats 배열 형태로)
+  const draft = tState.addGameDraft;
+  const allTags = [...tTeamMembers(g.teamA), ...tTeamMembers(g.teamB)];
+  allTags.forEach(tag => {
+    const perSet = (g.setStats && g.setStats[tag]) || [];
+    draft.stats[tag] = Array.from({length: draft.bo || perSet.length}, (_, i) => {
+      const s = perSet[i] || { k:'', d:'', a:'' };
+      return { k: s.k === 0 ? '' : String(s.k), d: s.d === 0 ? '' : String(s.d), a: s.a === 0 ? '' : String(s.a) };
+    });
+  });
+  tState.expandedGameIdx = null;
   tRenderResults();
 }
 
@@ -1679,7 +1731,7 @@ function tBuildAddGamePanelHtml(){
     `;
   }
 
-  if(teamA && teamB && draft.bo && draft.mapAssignments.length === 0){
+  if(teamA && teamB && draft.bo && draft.mapAssignments.length === 0 && !draft.manualPicking){
     mapPickHtml = `
       <div class="map-picker-wrap" id="tAddMapPickSection">
         <p class="counter" style="margin-top:18px; margin-bottom:10px;">각 팀이 선호하는 맵을 ${draft.bo}개씩 고르세요</p>
@@ -1696,10 +1748,37 @@ function tBuildAddGamePanelHtml(){
           </div>
         </div>
         <div class="nav-row nav-row-right">
-          <button type="button" class="btn btn-primary" id="btnTAddAssignMaps" ${(draft.teamMaps[1].length === draft.bo && draft.teamMaps[2].length === draft.bo) ? '' : 'disabled'}>맵 / 진영 배정</button>
+          <button type="button" class="mini-btn" id="btnTAddSwitchManual">맵 직접 배정하기</button>
+          <button type="button" class="btn btn-primary" id="btnTAddAssignMaps" ${(draft.teamMaps[1].length === draft.bo && draft.teamMaps[2].length === draft.bo) ? '' : 'disabled'}>랜덤으로 맵 / 진영 배정</button>
         </div>
       </div>
       <div class="map-result-list t-add-map-result-list" id="tAddMapResultList"></div>
+    `;
+  }
+
+  if(teamA && teamB && draft.bo && draft.mapAssignments.length === 0 && draft.manualPicking){
+    if(!draft.manualMaps || draft.manualMaps.length !== draft.bo){
+      draft.manualMaps = Array.from({length: draft.bo}, (_, i) => (draft.manualMaps && draft.manualMaps[i]) || '');
+    }
+    const rowsHtml = draft.manualMaps.map((cur, i) => `
+      <div class="t-manual-map-row">
+        <span class="t-manual-map-num">${i + 1}세트</span>
+        <select class="t-manual-map-select" data-set="${i}">
+          <option value="">맵 선택</option>
+          ${MAPS.map(m => `<option value="${escapeAttrJs(m)}" ${cur === m ? 'selected' : ''}>${escapeHtml(m)}</option>`).join('')}
+        </select>
+      </div>
+    `).join('');
+    const allPicked = draft.manualMaps.every(m => !!m);
+    mapPickHtml = `
+      <div class="map-picker-wrap" id="tAddManualMapSection">
+        <p class="counter" style="margin-top:18px; margin-bottom:10px;">세트별로 사용할 맵을 직접 선택하세요 (진영 배정은 확정 시 자동으로 정해집니다)</p>
+        <div class="t-manual-map-list">${rowsHtml}</div>
+        <div class="nav-row nav-row-right">
+          <button type="button" class="mini-btn" id="btnTAddSwitchRandom">랜덤 배정으로 전환</button>
+          <button type="button" class="btn btn-primary" id="btnTAddManualConfirm" ${allPicked ? '' : 'disabled'}>맵 확정</button>
+        </div>
+      </div>
     `;
   }
 
@@ -1742,9 +1821,11 @@ function tBuildAddGamePanelHtml(){
       const isOpen = draft.expandedSet === setIdx;
       const savedWinner = draft.setWinners[setIdx];
       const pendingWinner = draft.pendingSetWinners[setIdx] || savedWinner || null;
+      const savedScore = draft.roundScores[setIdx];
       const winnerPillHtml = savedWinner
-        ? `<span class="map-set-winner-pill">TEAM ${savedWinner} 승</span>`
+        ? `<span class="map-set-winner-pill">TEAM ${savedWinner} 승${savedScore ? ` · ${savedScore.a ?? '-'}:${savedScore.b ?? '-'}` : ''}</span>`
         : '';
+      const pendingScore = draft.pendingRoundScores[setIdx] || savedScore || {};
 
       const panelHtml = isOpen ? `
         <div class="t-set-kda-panel ${draft.justExpandedSet === setIdx ? 'slide-in' : ''}">
@@ -1752,6 +1833,12 @@ function tBuildAddGamePanelHtml(){
           <div class="t-stats-columns">
             ${buildStatsCol(teamA, setIdx)}
             ${buildStatsCol(teamB, setIdx)}
+          </div>
+          <p class="counter" style="margin:14px 0 6px;">라운드 스코어 (선택 입력)</p>
+          <div class="t-round-score-row">
+            <input type="text" inputmode="numeric" pattern="[0-9]*" class="t-kda-input t-round-score-input" data-set="${setIdx}" data-side="a" placeholder="TEAM ${teamA}" value="${escapeAttrJs(pendingScore.a !== undefined && pendingScore.a !== null ? String(pendingScore.a) : '')}" />
+            <span class="t-round-score-sep">:</span>
+            <input type="text" inputmode="numeric" pattern="[0-9]*" class="t-kda-input t-round-score-input" data-set="${setIdx}" data-side="b" placeholder="TEAM ${teamB}" value="${escapeAttrJs(pendingScore.b !== undefined && pendingScore.b !== null ? String(pendingScore.b) : '')}" />
           </div>
           <p class="counter" style="margin:14px 0 8px;">이 세트를 가져간 팀을 선택하세요</p>
           <div class="bo-select">
@@ -1769,8 +1856,8 @@ function tBuildAddGamePanelHtml(){
           <div class="map-result-item revealed t-map-box" data-set="${setIdx}" style="${buildMapCardBackground(item.map)}">
             <span class="map-result-game">${item.game}세트</span>
             <span class="map-result-name">${escapeHtml(item.map)}</span>
-            <span class="map-result-badge map-result-badge-${item.source}">${MAP_SOURCE_LABEL[item.source]}</span>
-            ${buildSidePillsHtml(item)}
+            <span class="map-result-badge map-result-badge-${item.source}">${mapSourceLabelFor(item.source, teamA, teamB)}</span>
+            ${buildSidePillsHtml(item, teamA, teamB)}
             ${winnerPillHtml}
           </div>
           ${panelHtml}
@@ -1797,10 +1884,11 @@ function tBuildAddGamePanelHtml(){
     `;
   }
 
+  const isEditing = draft.editingIdx !== null && draft.editingIdx !== undefined;
   return `
     <div class="t-add-game-panel">
       <div class="t-add-game-panel-head">
-        <span>경기 추가</span>
+        <span>${isEditing ? '경기 수정' : '경기 추가'}</span>
         <span class="counter" style="margin:0;">${draft.selected.length} / 2 팀 선택됨</span>
       </div>
       <p class="counter" style="margin-bottom:10px;">맞붙은 두 팀을 선택하세요</p>
@@ -1812,7 +1900,7 @@ function tBuildAddGamePanelHtml(){
       ${winnerHtml}
       <div class="nav-row">
         <button class="btn btn-ghost" id="btnCancelAddGame">취소</button>
-        <button class="btn btn-primary" id="btnConfirmAddGame" ${(teamA && teamB && draft.mapAssignments.length > 0 && draft.winner) ? '' : 'disabled'}>경기 추가</button>
+        <button class="btn btn-primary" id="btnConfirmAddGame" ${(teamA && teamB && draft.mapAssignments.length > 0 && draft.winner) ? '' : 'disabled'}>${isEditing ? '수정 저장' : '경기 추가'}</button>
       </div>
     </div>
   `;
@@ -1839,6 +1927,10 @@ function tWireAddGamePanel(){
       draft.mapAssignments = [];
       draft.setWinners = {};
       draft.pendingSetWinners = {};
+      draft.roundScores = {};
+      draft.pendingRoundScores = {};
+      draft.manualPicking = false;
+      draft.manualMaps = [];
       draft.expandedSet = null;
       draft.justExpandedSet = null;
       tRenderResults();
@@ -1854,19 +1946,61 @@ function tWireAddGamePanel(){
       draft.winner = null;
       draft.setWinners = {};
       draft.pendingSetWinners = {};
+      draft.roundScores = {};
+      draft.pendingRoundScores = {};
+      draft.manualPicking = false;
+      draft.manualMaps = [];
       draft.expandedSet = null;
       draft.justExpandedSet = null;
       tRenderResults();
     });
   });
 
-  if(draft.bo && draft.mapAssignments.length === 0){
+  if(draft.bo && draft.mapAssignments.length === 0 && !draft.manualPicking){
     tRenderMapGrid(1);
     tRenderMapGrid(2);
   }
 
   const assignBtn = $('#btnTAddAssignMaps');
   if(assignBtn) assignBtn.addEventListener('click', tAssignMapsForDraft);
+
+  const switchManualBtn = $('#btnTAddSwitchManual');
+  if(switchManualBtn){
+    switchManualBtn.addEventListener('click', () => {
+      draft.manualPicking = true;
+      draft.manualMaps = Array.from({length: draft.bo}, () => '');
+      tRenderResults();
+    });
+  }
+
+  const switchRandomBtn = $('#btnTAddSwitchRandom');
+  if(switchRandomBtn){
+    switchRandomBtn.addEventListener('click', () => {
+      draft.manualPicking = false;
+      tRenderResults();
+    });
+  }
+
+  $$('.t-manual-map-select').forEach(sel => {
+    sel.addEventListener('change', () => {
+      const setIdx = Number(sel.dataset.set);
+      draft.manualMaps[setIdx] = sel.value;
+      const confirmBtn = $('#btnTAddManualConfirm');
+      if(confirmBtn) confirmBtn.disabled = !draft.manualMaps.every(m => !!m);
+    });
+  });
+
+  const manualConfirmBtn = $('#btnTAddManualConfirm');
+  if(manualConfirmBtn){
+    manualConfirmBtn.addEventListener('click', () => {
+      if(!draft.manualMaps.every(m => !!m)) return;
+      const finalAssignments = draft.manualMaps.map((map, idx) => ({ game: idx + 1, map, source: 'manual' }));
+      applySetSides(finalAssignments);
+      draft.mapAssignments = finalAssignments;
+      draft.manualPicking = false;
+      tRenderResults();
+    });
+  }
 
   const resetMapsBtn = $('#btnTAddResetMaps');
   if(resetMapsBtn){
@@ -1880,6 +2014,8 @@ function tWireAddGamePanel(){
       draft.pendingSetWinners = {};
       draft.expandedSet = null;
       draft.justExpandedSet = null;
+      draft.manualPicking = false;
+      draft.manualMaps = [];
       tRenderResults();
     });
   }
@@ -1910,6 +2046,17 @@ function tWireAddGamePanel(){
     });
   });
 
+  $$('.t-round-score-input').forEach(inp => {
+    inp.addEventListener('input', () => {
+      inp.value = inp.value.replace(/[^0-9]/g, '');
+      const setIdx = Number(inp.dataset.set);
+      const side = inp.dataset.side;
+      if(!draft.pendingRoundScores) draft.pendingRoundScores = {};
+      if(!draft.pendingRoundScores[setIdx]) draft.pendingRoundScores[setIdx] = {};
+      draft.pendingRoundScores[setIdx][side] = inp.value === '' ? '' : Number(inp.value);
+    });
+  });
+
   $$('.t-set-save-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -1918,6 +2065,11 @@ function tWireAddGamePanel(){
       if(!team) return;
       if(!draft.setWinners) draft.setWinners = {};
       draft.setWinners[setIdx] = team;
+      if(!draft.roundScores) draft.roundScores = {};
+      const score = (draft.pendingRoundScores && draft.pendingRoundScores[setIdx]) || {};
+      if(score.a !== undefined && score.a !== '' || score.b !== undefined && score.b !== ''){
+        draft.roundScores[setIdx] = { a: score.a === '' ? null : (score.a ?? null), b: score.b === '' ? null : (score.b ?? null) };
+      }
       draft.expandedSet = null;
       draft.justExpandedSet = null;
       tRenderResults();
@@ -2030,6 +2182,7 @@ function tAssignMapsForDraft(){
 
 function tRunMapRouletteAnimation(finalAssignments){
   const draft = tState.addGameDraft;
+  const [teamA, teamB] = draft.selected;
   const pickSection = $('#tAddMapPickSection');
   if(pickSection) pickSection.classList.add('hidden');
   const box = $('#tAddMapResultList');
@@ -2065,9 +2218,9 @@ function tRunMapRouletteAnimation(finalAssignments){
       row.classList.add('revealed', 'reveal-pop');
       row.style.cssText += buildMapCardBackground(item.map);
       const badge = row.querySelector('.map-result-badge');
-      badge.textContent = MAP_SOURCE_LABEL[item.source];
+      badge.textContent = mapSourceLabelFor(item.source, teamA, teamB);
       badge.className = `map-result-badge map-result-badge-${item.source}`;
-      row.insertAdjacentHTML('beforeend', buildSidePillsHtml(item));
+      row.insertAdjacentHTML('beforeend', buildSidePillsHtml(item, teamA, teamB));
 
       if(idx === rows.length - 1){
         draft.mapAssignments = finalAssignments;
@@ -2099,17 +2252,25 @@ function tConfirmAddGame(){
   });
 
   const entry = tState.currentResultEntry;
-  entry.games.push({
-    game: entry.games.length + 1,
+  const isEdit = draft.editingIdx !== null && draft.editingIdx !== undefined && entry.games[draft.editingIdx];
+  const gameRecord = {
+    game: isEdit ? entry.games[draft.editingIdx].game : entry.games.length + 1,
     teamA,
     teamB,
     bo: draft.bo,
     mapAssignments: draft.mapAssignments,
     winnerTeam: draft.winner,
     setWinners: { ...(draft.setWinners || {}) },
+    roundScores: { ...(draft.roundScores || {}) },
     stats,
     setStats
-  });
+  };
+
+  if(isEdit){
+    entry.games[draft.editingIdx] = gameRecord;
+  }else{
+    entry.games.push(gameRecord);
+  }
 
   tState.resultsDirty = true;
   tState.addGameDraft = null;
@@ -2181,11 +2342,14 @@ function tRenderResults(){
   const buildGameDetailHtml = (g) => {
     const setsHtml = (g.mapAssignments || []).map((item, sIdx) => {
       const setWinner = (g.setWinners || {})[sIdx];
+      const score = (g.roundScores || {})[sIdx];
+      const scoreText = score && (score.a !== null && score.a !== undefined || score.b !== null && score.b !== undefined)
+        ? ` (${score.a ?? '-'}:${score.b ?? '-'})` : '';
       return `
         <div class="t-game-detail-set">
           <span class="t-game-detail-set-num">${item.game}세트</span>
           <span class="t-game-detail-set-map">${escapeHtml(item.map)}</span>
-          ${setWinner ? `<span class="map-set-winner-pill">TEAM ${setWinner} 승</span>` : '<span class="t-game-detail-set-nowin">기록 없음</span>'}
+          ${setWinner ? `<span class="map-set-winner-pill">TEAM ${setWinner} 승${scoreText}</span>` : '<span class="t-game-detail-set-nowin">기록 없음</span>'}
         </div>
       `;
     }).join('') || '<div class="t-team-card-empty">세트 정보가 없습니다.</div>';
@@ -2237,7 +2401,10 @@ function tRenderResults(){
             TEAM ${g.teamA || '-'} vs TEAM ${g.teamB || '-'} · TEAM ${g.winnerTeam} 승리
             ${g.bo ? `<span class="t-game-maps">BO${g.bo} · ${(g.mapAssignments || []).map(m => escapeHtml(m.map)).join(', ')}</span>` : ''}
           </span>
-          ${tState.readOnly ? '' : `<button type="button" class="row-delete t-game-delete" data-idx="${idx}" aria-label="삭제">✕</button>`}
+          ${tState.readOnly ? '' : `
+            <button type="button" class="mini-btn t-game-edit" data-idx="${idx}">수정</button>
+            <button type="button" class="row-delete t-game-delete" data-idx="${idx}" aria-label="삭제">✕</button>
+          `}
         </div>
         ${isOpen ? buildGameDetailHtml(g) : ''}
       </div>
@@ -2291,6 +2458,14 @@ function tRenderResults(){
   });
 
   if(!tState.readOnly){
+    $$('.t-game-edit').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const idx = Number(btn.dataset.idx);
+        tOpenEditGameForm(idx);
+      });
+    });
+
     $$('.t-game-delete').forEach(btn => {
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
@@ -2330,21 +2505,24 @@ async function tSaveResults(){
 
   try{
     const cfg = GitHubStore.getConfig();
+    if(!cfg || !GitHubStore.hasConfig()){
+      throw new Error('GitHub 저장소 연결 정보가 없습니다. admin.html에서 먼저 저장소를 연결해주세요.');
+    }
     const entry = tState.currentResultEntry;
     entry.updatedAt = new Date().toISOString();
 
-    const others = (tState.allResults || []).filter(r => !(r.type === 'tournament' && r.tournamentId === t.id));
+    // 저장 직전에 항상 인증된 API로 서버의 최신 데이터+sha를 다시 받아온다.
+    // 대회 결과 화면을 열 때는 토큰 없이 정적 파일을 읽는 경우가 많아 sha가
+    // 없거나, 그 사이 다른 관리자가 다른 대회 결과를 저장했을 수 있기 때문에
+    // tState.allResults(예전 값) 기준으로 병합하면 저장이 실패하거나 다른
+    // 대회의 결과가 덮어써질 수 있다. 최신 목록을 못 받아오면 저장을 중단한다.
+    const fresh = await fetchTournamentResults(cfg);
+    const sha = fresh.sha;
+    const others = (fresh.results || []).filter(r => !(r.type === 'tournament' && r.tournamentId === t.id));
     const merged = [...others, entry];
 
-    // 저장 직전에 최신 sha를 다시 받아온다 (읽기를 정적 파일로 했으면 sha가 없을 수 있음)
-    let sha = tState.resultsSha;
-    try{
-      const fresh = await fetchTournamentResults(cfg);
-      sha = fresh.sha;
-    }catch(e){ /* keep previous sha */ }
-
     const result = await saveTournamentResults(cfg, merged, sha);
-    tState.resultsSha = result.content ? result.content.sha : tState.resultsSha;
+    tState.resultsSha = result.content ? result.content.sha : sha;
     tState.allResults = merged;
     tState.resultsDirty = false;
 

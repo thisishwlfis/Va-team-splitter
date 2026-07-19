@@ -2009,6 +2009,55 @@ body.tournament-theme .map-result-badge-team2{
   background:rgba(255,255,255,0.07);
   color:var(--ink);
 }
+.map-result-badge-manual{background:#E9F2FF; color:#2A5EA8;}
+body.tournament-theme .map-result-badge-manual{
+  background:rgba(120,170,255,0.16);
+  color:#8fb8ff;
+}
+
+.t-round-score-row{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  max-width:220px;
+}
+.t-round-score-row .t-round-score-input{
+  text-align:center;
+}
+.t-round-score-sep{
+  color:var(--ink-soft);
+  font-weight:600;
+}
+
+.t-manual-map-list{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+  margin-top:6px;
+}
+.t-manual-map-row{
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+.t-manual-map-num{
+  min-width:52px;
+  font-size:13px;
+  color:var(--ink-soft);
+}
+.t-manual-map-select{
+  flex:1;
+  padding:8px 10px;
+  border-radius:8px;
+  border:1px solid var(--line);
+  background:var(--bg-alt);
+  color:var(--ink);
+  font-size:14px;
+}
+
+.t-game-row .t-game-edit{
+  margin-right:6px;
+}
 
 .header-row{
   display:flex;
