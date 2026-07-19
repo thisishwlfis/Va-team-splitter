@@ -1,0 +1,34 @@
+[
+  {
+    "id": "tresult-t-1783838641898-y7eyk",
+    "type": "tournament",
+    "tournamentId": "t-1783838641898-y7eyk",
+    "tournamentName": "[e-rica] Chill&Kill",
+    "teams": {
+      "1": [
+        "바른연애 길잡이#0420",
+        "수리수리마수리#0419",
+        "모찌는잠꾸러기#KR1",
+        "Kanade#KOR",
+        "이방인#imstr"
+      ],
+      "2": [
+        "양 자 영#KR1",
+        "던좀제#kr1",
+        "빵두먹고#kjw",
+        "CHAMBER USER#체임버임버",
+        "MASCHENYY#KR1"
+      ],
+      "3": [
+        "天命至尊 朴동민#천명지존",
+        "st1gma4a#PISC",
+        "오소리#0415",
+        "남친구함#남친구해요",
+        "민욱민옥#0808"
+      ]
+    },
+    "teamCount": 3,
+    "games": [],
+    "updatedAt": "2026-07-19T03:42:39.760Z"
+  }
+]
