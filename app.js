@@ -902,24 +902,25 @@ function runMapRouletteAnimation(finalAssignments){
   });
 }
 
-function buildSidePillsHtml(item, teamNumA, teamNumB){
-  const numA = teamNumA || 1;
-  const numB = teamNumB || 2;
+function buildSidePillsHtml(item, labelA, labelB){
+  const la = labelA || 'TEAM 1';
+  const lb = labelB || 'TEAM 2';
   return `
     <div class="map-side-pills">
-      <span class="map-side-pill ${item.side1}">TEAM ${numA} · ${item.side1 === 'attack' ? '선공' : '선수비'}</span>
-      <span class="map-side-pill ${item.side2}">TEAM ${numB} · ${item.side2 === 'attack' ? '선공' : '선수비'}</span>
+      <span class="map-side-pill ${item.side1}">${la} · ${item.side1 === 'attack' ? '선공' : '선수비'}</span>
+      <span class="map-side-pill ${item.side2}">${lb} · ${item.side2 === 'attack' ? '선공' : '선수비'}</span>
     </div>
   `;
 }
 
 // 대회모드에서는 맞대결이 항상 TEAM1 vs TEAM2가 아니라 TEAM1 vs TEAM3 처럼
-// 임의의 두 팀일 수 있으므로, source 뱃지 라벨은 실제 선택된 팀 번호를 반영해야 한다.
-function mapSourceLabelFor(source, teamNumA, teamNumB){
+// 임의의 두 팀일 수 있고, 팀에 커스텀 이름이 지정되어 있을 수도 있으므로
+// source 뱃지 라벨은 호출부에서 넘겨주는 실제 표시 라벨을 그대로 사용한다.
+function mapSourceLabelFor(source, labelA, labelB){
   if(source === 'common') return '공통';
   if(source === 'manual') return '직접 배정';
-  if(source === 'team1') return `TEAM ${teamNumA || 1}`;
-  if(source === 'team2') return `TEAM ${teamNumB || 2}`;
+  if(source === 'team1') return labelA || 'TEAM 1';
+  if(source === 'team2') return labelB || 'TEAM 2';
   return MAP_SOURCE_LABEL[source] || '';
 }
 
@@ -1388,20 +1389,22 @@ function tGenId(){
 }
 
 async function tLoadTournaments(){
-  // 1) 누구나: GitHub Pages에 배포된 정적 파일을 토큰 없이 읽는다.
-  //    (owner/repo가 public 저장소라면 이 방법으로 모든 방문자가 조회 가능)
-  const staticData = await fetchStaticJson(TOURNAMENTS_PATH);
-  if(staticData){
-    tState.tournaments = staticData;
+  // 1) 누구나: 토큰 없이 GitHub API로 최신 데이터를 바로 읽는다 (public 저장소 기준).
+  //    GitHub Pages에 배포된 정적 파일은 CDN에 캐시되어 커밋 직후에도 한동안
+  //    예전 내용을 돌려줄 수 있어(다른 사람 화면에 저장이 반영 안 되는 것처럼 보이는
+  //    원인), 정적 파일보다 API 조회를 우선한다.
+  const publicData = await fetchPublicGithubJson(TOURNAMENTS_PATH);
+  if(publicData){
+    tState.tournaments = publicData;
     tState.sha = null; // 저장 직전 최신 sha를 다시 받아오므로 여기선 필요 없음
     tState.usingLocal = false;
     return;
   }
 
-  // 1.5) 누구나: Pages 배포가 아직 안 됐어도, 토큰 없이 GitHub API로 바로 읽는다 (public 저장소).
-  const publicData = await fetchPublicGithubJson(TOURNAMENTS_PATH);
-  if(publicData){
-    tState.tournaments = publicData;
+  // 1.5) API 조회가 실패했을 때만(레이트리밋 등) 정적 파일로 대체 조회한다.
+  const staticData = await fetchStaticJson(TOURNAMENTS_PATH);
+  if(staticData){
+    tState.tournaments = staticData;
     tState.sha = null;
     tState.usingLocal = false;
     return;
@@ -1603,15 +1606,17 @@ async function tOpenResults(t){
     let sha = null;
     let results = null;
 
-    // 1) 누구나: 배포된 정적 파일을 토큰 없이 읽는다.
-    const staticResults = await fetchStaticJson(TOURNAMENT_RESULTS_PATH);
-    if(staticResults){
-      results = staticResults;
+    // 1) 누구나: 토큰 없이 GitHub API로 최신 데이터를 바로 읽는다 (public 저장소).
+    //    GitHub Pages 정적 파일은 CDN 캐시 때문에 커밋 직후 다른 사람 화면에는
+    //    한동안 예전 데이터가 보일 수 있어, API 조회를 정적 파일보다 우선한다.
+    const publicResults = await fetchPublicGithubJson(TOURNAMENT_RESULTS_PATH);
+    if(publicResults){
+      results = publicResults;
     }else{
-      // 1.5) 누구나: Pages 배포 전이어도 토큰 없이 GitHub API로 바로 읽는다 (public 저장소).
-      const publicResults = await fetchPublicGithubJson(TOURNAMENT_RESULTS_PATH);
-      if(publicResults){
-        results = publicResults;
+      // 1.5) API 조회가 실패했을 때만(레이트리밋 등) 정적 파일로 대체 조회한다.
+      const staticResults = await fetchStaticJson(TOURNAMENT_RESULTS_PATH);
+      if(staticResults){
+        results = staticResults;
       }else if(cfg && GitHubStore.hasConfig()){
         // 2) 그래도 없으면(예: private 저장소), 관리자 토큰으로 직접 조회
         const fetched = await fetchTournamentResults(cfg);
@@ -1652,6 +1657,13 @@ function tTeamMembers(n){
   const entry = tState.currentResultEntry;
   const tags = (entry.teams && entry.teams[n]) || [];
   return tags;
+}
+
+// 경기 추가/조회 화면에서 팀 번호 대신 관리자가 지정한 커스텀 팀명을 보여주기 위한 헬퍼.
+// tTeamLabel은 이 파일 뒤쪽에 정의되어 있지만 함수 선언은 호이스팅되므로 여기서도 호출 가능하다.
+function tGameTeamLabel(n){
+  const t = tState.resultsTournament;
+  return tTeamLabel(t && t.teamNames, n);
 }
 
 /* ---- 경기 추가 폼 (맞대결 팀 선택 → 선수별 K/D/A 입력 → 승리 팀 선택) ---- */
@@ -1711,7 +1723,7 @@ function tBuildAddGamePanelHtml(){
   const teamCount = tState.currentResultEntry.teamCount || 2;
 
   const matchupBtnsHtml = Array.from({length:teamCount}, (_, i) => i + 1).map(n => `
-    <button type="button" class="bo-btn t-matchup-chip ${draft.selected.includes(n) ? 'active' : ''}" data-team="${n}">TEAM ${n}</button>
+    <button type="button" class="bo-btn t-matchup-chip ${draft.selected.includes(n) ? 'active' : ''}" data-team="${n}">${escapeHtml(tGameTeamLabel(n))}</button>
   `).join('');
 
   let boHtml = '';
@@ -1737,18 +1749,18 @@ function tBuildAddGamePanelHtml(){
         <p class="counter" style="margin-top:18px; margin-bottom:10px;">각 팀이 선호하는 맵을 ${draft.bo}개씩 고르세요</p>
         <div class="map-picker-columns">
           <div class="map-picker-col">
-            <div class="team-title team-1">TEAM ${teamA}</div>
+            <div class="team-title team-1">${escapeHtml(tGameTeamLabel(teamA))}</div>
             <p class="map-pick-count" id="tAddT1PickCount">${draft.teamMaps[1].length} / ${draft.bo} 선택</p>
             <div class="map-grid" id="tAddT1MapGrid"></div>
           </div>
           <div class="map-picker-col">
-            <div class="team-title team-2">TEAM ${teamB}</div>
+            <div class="team-title team-2">${escapeHtml(tGameTeamLabel(teamB))}</div>
             <p class="map-pick-count" id="tAddT2PickCount">${draft.teamMaps[2].length} / ${draft.bo} 선택</p>
             <div class="map-grid" id="tAddT2MapGrid"></div>
           </div>
         </div>
         <div class="nav-row nav-row-right">
-          <button type="button" class="mini-btn" id="btnTAddSwitchManual">맵 직접 배정하기</button>
+          <button type="button" class="btn btn-ghost" id="btnTAddSwitchManual">맵 직접 배정하기</button>
           <button type="button" class="btn btn-primary" id="btnTAddAssignMaps" ${(draft.teamMaps[1].length === draft.bo && draft.teamMaps[2].length === draft.bo) ? '' : 'disabled'}>랜덤으로 맵 / 진영 배정</button>
         </div>
       </div>
@@ -1775,7 +1787,7 @@ function tBuildAddGamePanelHtml(){
         <p class="counter" style="margin-top:18px; margin-bottom:10px;">세트별로 사용할 맵을 직접 선택하세요 (진영 배정은 확정 시 자동으로 정해집니다)</p>
         <div class="t-manual-map-list">${rowsHtml}</div>
         <div class="nav-row nav-row-right">
-          <button type="button" class="mini-btn" id="btnTAddSwitchRandom">랜덤 배정으로 전환</button>
+          <button type="button" class="btn btn-ghost" id="btnTAddSwitchRandom">랜덤 배정으로 전환</button>
           <button type="button" class="btn btn-primary" id="btnTAddManualConfirm" ${allPicked ? '' : 'disabled'}>맵 확정</button>
         </div>
       </div>
@@ -1809,7 +1821,7 @@ function tBuildAddGamePanelHtml(){
           }).join('');
       return `
         <div class="t-stats-col">
-          <span class="team-title t-stats-col-title">TEAM ${teamNum}</span>
+          <span class="team-title t-stats-col-title">${escapeHtml(tGameTeamLabel(teamNum))}</span>
           <div class="t-kda-head"><span></span><span>K</span><span>D</span><span>A</span></div>
           ${rowsHtml}
         </div>
@@ -1823,7 +1835,7 @@ function tBuildAddGamePanelHtml(){
       const pendingWinner = draft.pendingSetWinners[setIdx] || savedWinner || null;
       const savedScore = draft.roundScores[setIdx];
       const winnerPillHtml = savedWinner
-        ? `<span class="map-set-winner-pill">TEAM ${savedWinner} 승${savedScore ? ` · ${savedScore.a ?? '-'}:${savedScore.b ?? '-'}` : ''}</span>`
+        ? `<span class="map-set-winner-pill">${escapeHtml(tGameTeamLabel(savedWinner))} 승${savedScore ? ` · ${savedScore.a ?? '-'}:${savedScore.b ?? '-'}` : ''}</span>`
         : '';
       const pendingScore = draft.pendingRoundScores[setIdx] || savedScore || {};
 
@@ -1836,14 +1848,14 @@ function tBuildAddGamePanelHtml(){
           </div>
           <p class="counter" style="margin:14px 0 6px;">라운드 스코어 (선택 입력)</p>
           <div class="t-round-score-row">
-            <input type="text" inputmode="numeric" pattern="[0-9]*" class="t-kda-input t-round-score-input" data-set="${setIdx}" data-side="a" placeholder="TEAM ${teamA}" value="${escapeAttrJs(pendingScore.a !== undefined && pendingScore.a !== null ? String(pendingScore.a) : '')}" />
+            <input type="text" inputmode="numeric" pattern="[0-9]*" class="t-kda-input t-round-score-input" data-set="${setIdx}" data-side="a" placeholder="${escapeAttrJs(tGameTeamLabel(teamA))}" value="${escapeAttrJs(pendingScore.a !== undefined && pendingScore.a !== null ? String(pendingScore.a) : '')}" />
             <span class="t-round-score-sep">:</span>
-            <input type="text" inputmode="numeric" pattern="[0-9]*" class="t-kda-input t-round-score-input" data-set="${setIdx}" data-side="b" placeholder="TEAM ${teamB}" value="${escapeAttrJs(pendingScore.b !== undefined && pendingScore.b !== null ? String(pendingScore.b) : '')}" />
+            <input type="text" inputmode="numeric" pattern="[0-9]*" class="t-kda-input t-round-score-input" data-set="${setIdx}" data-side="b" placeholder="${escapeAttrJs(tGameTeamLabel(teamB))}" value="${escapeAttrJs(pendingScore.b !== undefined && pendingScore.b !== null ? String(pendingScore.b) : '')}" />
           </div>
           <p class="counter" style="margin:14px 0 8px;">이 세트를 가져간 팀을 선택하세요</p>
           <div class="bo-select">
-            <button type="button" class="bo-btn t-set-winner-btn ${pendingWinner === teamA ? 'active' : ''}" data-set="${setIdx}" data-team="${teamA}">TEAM ${teamA} 승</button>
-            <button type="button" class="bo-btn t-set-winner-btn ${pendingWinner === teamB ? 'active' : ''}" data-set="${setIdx}" data-team="${teamB}">TEAM ${teamB} 승</button>
+            <button type="button" class="bo-btn t-set-winner-btn ${pendingWinner === teamA ? 'active' : ''}" data-set="${setIdx}" data-team="${teamA}">${escapeHtml(tGameTeamLabel(teamA))} 승</button>
+            <button type="button" class="bo-btn t-set-winner-btn ${pendingWinner === teamB ? 'active' : ''}" data-set="${setIdx}" data-team="${teamB}">${escapeHtml(tGameTeamLabel(teamB))} 승</button>
           </div>
           <div class="nav-row nav-row-right" style="margin-top:12px;">
             <button type="button" class="btn btn-primary t-set-save-btn" data-set="${setIdx}" ${pendingWinner ? '' : 'disabled'}>이 세트 저장</button>
@@ -1856,8 +1868,8 @@ function tBuildAddGamePanelHtml(){
           <div class="map-result-item revealed t-map-box" data-set="${setIdx}" style="${buildMapCardBackground(item.map)}">
             <span class="map-result-game">${item.game}세트</span>
             <span class="map-result-name">${escapeHtml(item.map)}</span>
-            <span class="map-result-badge map-result-badge-${item.source}">${mapSourceLabelFor(item.source, teamA, teamB)}</span>
-            ${buildSidePillsHtml(item, teamA, teamB)}
+            <span class="map-result-badge map-result-badge-${item.source}">${mapSourceLabelFor(item.source, escapeHtml(tGameTeamLabel(teamA)), escapeHtml(tGameTeamLabel(teamB)))}</span>
+            ${buildSidePillsHtml(item, escapeHtml(tGameTeamLabel(teamA)), escapeHtml(tGameTeamLabel(teamB)))}
             ${winnerPillHtml}
           </div>
           ${panelHtml}
@@ -1878,8 +1890,8 @@ function tBuildAddGamePanelHtml(){
       <p class="counter" style="margin-bottom:10px;
       margin-top: 18px;">승리 팀을 선택하세요</p>
       <div class="bo-select">
-        <button type="button" class="bo-btn t-winner-btn ${draft.winner === teamA ? 'active' : ''}" data-team="${teamA}">TEAM ${teamA} 승</button>
-        <button type="button" class="bo-btn t-winner-btn ${draft.winner === teamB ? 'active' : ''}" data-team="${teamB}">TEAM ${teamB} 승</button>
+        <button type="button" class="bo-btn t-winner-btn ${draft.winner === teamA ? 'active' : ''}" data-team="${teamA}">${escapeHtml(tGameTeamLabel(teamA))} 승</button>
+        <button type="button" class="bo-btn t-winner-btn ${draft.winner === teamB ? 'active' : ''}" data-team="${teamB}">${escapeHtml(tGameTeamLabel(teamB))} 승</button>
       </div>
     `;
   }
@@ -2218,9 +2230,9 @@ function tRunMapRouletteAnimation(finalAssignments){
       row.classList.add('revealed', 'reveal-pop');
       row.style.cssText += buildMapCardBackground(item.map);
       const badge = row.querySelector('.map-result-badge');
-      badge.textContent = mapSourceLabelFor(item.source, teamA, teamB);
+      badge.textContent = mapSourceLabelFor(item.source, tGameTeamLabel(teamA), tGameTeamLabel(teamB));
       badge.className = `map-result-badge map-result-badge-${item.source}`;
-      row.insertAdjacentHTML('beforeend', buildSidePillsHtml(item, teamA, teamB));
+      row.insertAdjacentHTML('beforeend', buildSidePillsHtml(item, escapeHtml(tGameTeamLabel(teamA)), escapeHtml(tGameTeamLabel(teamB))));
 
       if(idx === rows.length - 1){
         draft.mapAssignments = finalAssignments;
@@ -2349,7 +2361,7 @@ function tRenderResults(){
         <div class="t-game-detail-set">
           <span class="t-game-detail-set-num">${item.game}세트</span>
           <span class="t-game-detail-set-map">${escapeHtml(item.map)}</span>
-          ${setWinner ? `<span class="map-set-winner-pill">TEAM ${setWinner} 승${scoreText}</span>` : '<span class="t-game-detail-set-nowin">기록 없음</span>'}
+          ${setWinner ? `<span class="map-set-winner-pill">${escapeHtml(tGameTeamLabel(setWinner))} 승${scoreText}</span>` : '<span class="t-game-detail-set-nowin">기록 없음</span>'}
         </div>
       `;
     }).join('') || '<div class="t-team-card-empty">세트 정보가 없습니다.</div>';
@@ -2370,7 +2382,7 @@ function tRenderResults(){
           }).join('');
       return `
         <div class="t-stats-col">
-          <span class="team-title t-stats-col-title">TEAM ${teamNum}</span>
+          <span class="team-title t-stats-col-title">${escapeHtml(tGameTeamLabel(teamNum))}</span>
           ${rowsHtml}
         </div>
       `;
@@ -2398,7 +2410,7 @@ function tRenderResults(){
         <div class="t-game-row t-game-row-clickable" data-idx="${idx}">
           <span>게임 ${idx + 1}</span>
           <span class="t-game-winner">
-            TEAM ${g.teamA || '-'} vs TEAM ${g.teamB || '-'} · TEAM ${g.winnerTeam} 승리
+            ${escapeHtml(g.teamA ? tGameTeamLabel(g.teamA) : '-')} vs ${escapeHtml(g.teamB ? tGameTeamLabel(g.teamB) : '-')} · ${escapeHtml(g.winnerTeam ? tGameTeamLabel(g.winnerTeam) : '-')} 승리
             ${g.bo ? `<span class="t-game-maps">BO${g.bo} · ${(g.mapAssignments || []).map(m => escapeHtml(m.map)).join(', ')}</span>` : ''}
           </span>
           ${tState.readOnly ? '' : `
